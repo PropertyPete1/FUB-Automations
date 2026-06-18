@@ -1,0 +1,232 @@
+{
+  "connection_ok": true,
+  "users_status_code": 200,
+  "people_status_code": 200,
+  "users": [
+    {
+      "id": 35,
+      "name": "Laila Maria",
+      "email": "laila@lifestyledesignrealty.com",
+      "role": "Agent",
+      "status": "Active"
+    },
+    {
+      "id": 34,
+      "name": "Bebe Gutierrez",
+      "email": "bebe@lifestyledesignrealty.com",
+      "role": "Agent",
+      "status": "Active"
+    },
+    {
+      "id": 33,
+      "name": "Irma Vidic Crisp",
+      "email": "Irma@lifestyledesignrealty.com",
+      "role": "Broker",
+      "status": "Active"
+    },
+    {
+      "id": 31,
+      "name": "Stefanie Graham",
+      "email": "stefanie@lifestyledesignrealty.com",
+      "role": "Broker",
+      "status": "Active"
+    },
+    {
+      "id": 28,
+      "name": "Abby Martinez",
+      "email": "abby@lifestyledesignrealty.com",
+      "role": "Agent",
+      "status": "Active"
+    },
+    {
+      "id": 20,
+      "name": "Tiffany Proske",
+      "email": "Tiffany@lifestyledesignrealty.com",
+      "role": "Agent",
+      "status": "Active"
+    },
+    {
+      "id": 16,
+      "name": "Luke Durbin",
+      "email": "Luke@lifestyledesignrealty.com",
+      "role": "Agent",
+      "status": "Active"
+    },
+    {
+      "id": 2,
+      "name": "Peter Allen",
+      "email": "peter@lifestyledesignrealty.com",
+      "role": "Broker",
+      "status": "Active"
+    },
+    {
+      "id": 1,
+      "name": "Steven Van Orden",
+      "email": "steven@lifestyledesignrealty.com",
+      "role": "Broker",
+      "status": "Active"
+    }
+  ],
+  "peter_candidates": [
+    {
+      "id": 2,
+      "name": "Peter Allen",
+      "email": "peter@lifestyledesignrealty.com",
+      "role": "Broker",
+      "status": "Active"
+    }
+  ],
+  "sample_people": [
+    {
+      "id": 6031,
+      "name": "Andre Murrell",
+      "stage": "Lead",
+      "assignedUserId": 35,
+      "assignedPondId": null,
+      "tags": [],
+      "lastActivity": "2026-06-02T23:14:11Z",
+      "lastCommunication": {
+        "id": 10674,
+        "date": "2026-06-02T23:14:11Z",
+        "type": "lastText",
+        "direction": "incoming",
+        "content": "murrellandre0@gmail.com"
+      }
+    },
+    {
+      "id": 6030,
+      "name": "Jody Webb",
+      "stage": "Lead",
+      "assignedUserId": 35,
+      "assignedPondId": null,
+      "tags": [],
+      "lastActivity": "2026-06-02T22:22:52Z",
+      "lastCommunication": {
+        "id": 10662,
+        "date": "2026-06-02T22:22:32Z",
+        "type": "lastText",
+        "direction": "outgoing",
+        "content": "Hi Jody, this is Laila with Lifestyle Design Realty. When would be a good time to chat about your new home search?"
+      }
+    },
+    {
+      "id": 6029,
+      "name": "Chris Judge",
+      "stage": "Lead",
+      "assignedUserId": 35,
+      "assignedPondId": null,
+      "tags": [],
+      "lastActivity": "2026-06-02T23:01:52Z",
+      "lastCommunication": {
+        "id": 10671,
+        "date": "2026-06-02T23:01:52Z",
+        "type": "lastText",
+        "direction": "incoming",
+        "content": "Not sure as of yet. "
+      }
+    },
+    {
+      "id": 6028,
+      "name": "William Ringo",
+      "stage": "Lead",
+      "assignedUserId": 1,
+      "assignedPondId": null,
+      "tags": [],
+      "lastActivity": "2026-06-02T17:03:17Z",
+      "lastCommunication": {
+        "id": 6886,
+        "date": "2026-06-02T17:02:25Z",
+        "type": "lastCall",
+        "direction": "outgoing",
+        "content": null
+      }
+    },
+    {
+      "id": 6027,
+      "name": "Sherry Smith",
+      "stage": "Lead",
+      "assignedUserId": 1,
+      "assignedPondId": null,
+      "tags": [],
+      "lastActivity": "2026-06-01T17:24:28Z",
+      "lastCommunication": null
+    },
+    {
+      "id": 6026,
+      "name": "Santosh Selvarajan",
+      "stage": "Lead",
+      "assignedUserId": 35,
+      "assignedPondId": null,
+      "tags": [],
+      "lastActivity": "2026-06-02T22:46:11Z",
+      "lastCommunication": {
+        "id": 10665,
+        "date": "2026-06-02T22:43:53Z",
+        "type": "lastText",
+        "direction": "outgoing",
+        "content": "I sent you the buyer rep \ud83d\udc4d It will come from Authentisign in your inbox"
+      }
+    },
+    {
+      "id": 6025,
+      "name": "Hassan Khattak",
+      "stage": "Lead",
+      "assignedUserId": 35,
+      "assignedPondId": null,
+      "tags": [],
+      "lastActivity": "2026-06-02T22:46:43Z",
+      "lastCommunication": {
+        "id": 10666,
+        "date": "2026-06-02T22:45:23Z",
+        "type": "lastText",
+        "direction": "outgoing",
+        "content": "Hello Hassan, when would be a good time to call you this week to chat about your new home search?"
+      }
+    },
+    {
+      "id": 6023,
+      "name": "Amber Mazur",
+      "stage": "Lead",
+      "assignedUserId": 1,
+      "assignedPondId": null,
+      "tags": [
+        "Realtor"
+      ],
+      "lastActivity": "2026-05-30T23:28:59Z",
+      "lastCommunication": null
+    },
+    {
+      "id": 6022,
+      "name": "Sam Sam",
+      "stage": "Lead",
+      "assignedUserId": 35,
+      "assignedPondId": null,
+      "tags": [],
+      "lastActivity": "2026-06-02T22:46:17Z",
+      "lastCommunication": {
+        "id": 6899,
+        "date": "2026-06-02T22:45:45Z",
+        "type": "lastCall",
+        "direction": "outgoing",
+        "content": null
+      }
+    },
+    {
+      "id": 6021,
+      "name": "Esme Ortega",
+      "stage": "Nurture",
+      "assignedUserId": 35,
+      "assignedPondId": null,
+      "tags": [],
+      "lastActivity": "2026-06-02T22:47:05Z",
+      "lastCommunication": {
+        "id": 6867,
+        "date": "2026-05-30T21:34:03Z",
+        "type": "lastCall",
+        "direction": "outgoing",
+        "content": null
+      }
+    }
+  ],
+  "errors": {}
+}

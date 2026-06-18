@@ -1,0 +1,31 @@
+{
+  "run_at": "2026-06-13T21:32:25.347084Z",
+  "passed": 314,
+  "total": 319,
+  "failed": 5,
+  "score_pct": 98.4,
+  "clean": false,
+  "failures": [
+    {
+      "label": "D: leads.logSentNote is PROTECTED",
+      "detail": "SECURITY: logSentNote must be protectedProcedure"
+    },
+    {
+      "label": "J: CopilotSmsDraft component",
+      "detail": ""
+    },
+    {
+      "label": "M: logSentNote is protectedProcedure",
+      "detail": ""
+    },
+    {
+      "label": "N: logSentNote UNAUTHORIZED test",
+      "detail": "Missing rejection test for unauthenticated logSentNote call"
+    },
+    {
+      "label": "N: 27 tests pass",
+      "detail": "Expected 27 passed. Got: e \"pnpm\" field in package.json is no longer read by pnpm. The following keys were ignored: \"pnpm.patchedDependencies\", \"pnpm.overrides\". See https://pnpm.io/settings for the new home of each setting.\n"
+    }
+  ],
+  "audit_version": "8x"
+}

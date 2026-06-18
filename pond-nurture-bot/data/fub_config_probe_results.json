@@ -1,0 +1,64 @@
+{
+  "status_codes": {
+    "stages": 200,
+    "ponds": 200,
+    "tags": 403,
+    "sources": 404,
+    "custom_fields": 200
+  },
+  "errors": {
+    "tags": "{\"errorMessage\": \"You do not have access to this API endpoint.\"}",
+    "sources": "{\"errorMessage\": \"Collection name 'Sources' in the URL is not valid. Please use a correct collection name, for example 'people'.\"}"
+  },
+  "stages": [
+    {
+      "id": 2,
+      "name": "Lead"
+    },
+    {
+      "id": 12,
+      "name": "Hot Prospect"
+    },
+    {
+      "id": 13,
+      "name": "Nurture"
+    },
+    {
+      "id": 17,
+      "name": "Active Client"
+    },
+    {
+      "id": 14,
+      "name": "Pending"
+    },
+    {
+      "id": 8,
+      "name": "Closed"
+    },
+    {
+      "id": 15,
+      "name": "Past Client"
+    },
+    {
+      "id": 16,
+      "name": "Sphere"
+    },
+    {
+      "id": 11,
+      "name": "Trash"
+    },
+    {
+      "id": 18,
+      "name": "Unresponsive"
+    }
+  ],
+  "ponds": [
+    {
+      "id": 2,
+      "name": "Lead Pond"
+    }
+  ],
+  "tags": [],
+  "sources": [],
+  "custom_fields": []
+}

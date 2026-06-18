@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-06-17T17:03:57.555854+00:00",
+  "dry_run_forced": true,
+  "preview_audit_database": "/home/ubuntu/fub_automation/data/phase2_preview_audit.db",
+  "customer_emails_enabled_in_memory_only": true,
+  "sms_enabled": false,
+  "pond_nurture_only": true,
+  "configured_pond_ids": [
+    2
+  ],
+  "customer_reengagement_cadence_days": 14,
+  "stale_agent_no_note_days": 20,
+  "stale_reassign_target_pond_id": 2,
+  "captured_customer_email_preview_count": 1,
+  "captured_reassignment_preview_count": 0,
+  "sample_limits": {
+    "pond_sample": 5,
+    "stale_sample": 12
+  },
+  "fast_mode_no_note_lookup": false,
+  "audit_counts": {
+    "pond_nurture::sent": 1,
+    "pond_nurture::skipped": 2,
+    "pond_nurture::suppressed": 2,
+    "stale_agent_pond_reassignment::suppressed": 12
+  },
+  "email_previews": [
+    {
+      "to_domain": "gmail.com",
+      "from_email": "peter@lifestyledesignrealty.com",
+      "subject": "Ida, curious how new construction and concessions fit into your San Antonio plans? \ud83c\udfe1\u2728",
+      "body_preview": "Hey Ida,\n\nHope your week is going well! I wanted to check in since I sent over some listings a little while ago. Did you get a chance to look at those? I know San Antonio\u2019s market can be a bit of a puzzle right now, especially with new construction options popping up and some sellers offering concessions.\n\nIt\u2019s honestly a great time to explore if you\u2019re open to fresh builds or considering timing your move for the best deals. Plus, picking the right neighborhood can make a huge difference with lifestyle here. Whether it\u2019s easy commutes, cool coffee spots, or weekend vibes, San Antonio has a lot to offer.\n\nWhat\u2019s your feeling on new construction versus existing homes? Curious to hear what matters most to you.\n\nTalk soon,\nPeter\n\n--\nLifestyle Design Realty\n1209 S Saint Marys St #232, San Antonio, TX 78210\n\nIf you no longer want market updates from us, reply UNSUBSCRIBE and we will remove you from future marketing emails."
+    }
+  ],
+  "reassignment_previews": []
+}

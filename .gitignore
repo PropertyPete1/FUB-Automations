@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+
+# Environment secrets — NEVER commit these
+.env
+.env.local
+.env.*
+
+# Databases
+*.sqlite3
+*.db
+
+# Logs
+*.log
+logs/
+.manus-logs/
+
+# Node / WebDev
+node_modules/
+dist/
+.next/
+build/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# One-off audit scripts (not part of the live stack)
+*_audit.py
+preview_phase2_*.py
+test_*.py

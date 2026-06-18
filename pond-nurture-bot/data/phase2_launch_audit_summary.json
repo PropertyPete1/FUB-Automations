@@ -1,0 +1,326 @@
+{
+  "database_path": "data/fub_automation.sqlite3",
+  "since": "2026-06-03T20:37:01.390878+00:00",
+  "counts": {
+    "phase2_daily_summary::sent": 1,
+    "pond_nurture::suppressed": 126,
+    "pond_nurture::sent": 4,
+    "stale_agent_pond_reassignment::launch_cap_reached": 1,
+    "stale_agent_pond_reassignment::completed": 85,
+    "stale_agent_pond_reassignment::suppressed": 2,
+    "pond_nurture::skipped": 1
+  },
+  "notable": [
+    {
+      "created_at": "2026-06-03T22:36:47.664866+00:00",
+      "action": "phase2_daily_summary",
+      "status": "sent",
+      "person_id": null,
+      "details": {
+        "to": "peter@lifestyledesignrealty.com",
+        "row_count": 219
+      }
+    },
+    {
+      "created_at": "2026-06-03T22:35:54.994332+00:00",
+      "action": "pond_nurture",
+      "status": "sent",
+      "person_id": 5951,
+      "details": {
+        "channels": [
+          "email"
+        ],
+        "city": "San Antonio",
+        "city_source": "fub_notes",
+        "freshness_angle": "home-search strategy and must-have priorities question"
+      }
+    },
+    {
+      "created_at": "2026-06-03T22:35:43.216908+00:00",
+      "action": "pond_nurture",
+      "status": "sent",
+      "person_id": 5954,
+      "details": {
+        "channels": [
+          "email"
+        ],
+        "city": "San Antonio",
+        "city_source": "lead_fields",
+        "freshness_angle": "rates/payment context with a low-pressure next-step question"
+      }
+    },
+    {
+      "created_at": "2026-06-03T22:35:37.263941+00:00",
+      "action": "pond_nurture",
+      "status": "sent",
+      "person_id": 5956,
+      "details": {
+        "channels": [
+          "email"
+        ],
+        "city": "San Antonio",
+        "city_source": "lead_fields",
+        "freshness_angle": "quick local market pulse and buying-power question"
+      }
+    },
+    {
+      "created_at": "2026-06-03T22:35:01.070984+00:00",
+      "action": "stale_agent_pond_reassignment",
+      "status": "launch_cap_reached",
+      "person_id": null,
+      "details": {
+        "cap": 25
+      }
+    },
+    {
+      "created_at": "2026-06-03T22:35:01.069987+00:00",
+      "action": "stale_agent_pond_reassignment",
+      "status": "completed",
+      "person_id": 5915,
+      "details": {
+        "reason": "No qualifying FUB note found in 20+ days; reassigned to Lead Pond by approved Phase 2 automation.",
+        "stage": "Lead"
+      }
+    },
+    {
+      "created_at": "2026-06-03T22:34:57.821847+00:00",
+      "action": "stale_agent_pond_reassignment",
+      "status": "completed",
+      "person_id": 5917,
+      "details": {
+        "reason": "No qualifying FUB note found in 20+ days; reassigned to Lead Pond by approved Phase 2 automation.",
+        "stage": "Lead"
+      }
+    },
+    {
+      "created_at": "2026-06-03T22:34:54.753403+00:00",
+      "action": "stale_agent_pond_reassignment",
+      "status": "completed",
+      "person_id": 5918,
+      "details": {
+        "reason": "No qualifying FUB note found in 20+ days; reassigned to Lead Pond by approved Phase 2 automation.",
+        "stage": "Lead"
+      }
+    },
+    {
+      "created_at": "2026-06-03T22:34:49.046291+00:00",
+      "action": "stale_agent_pond_reassignment",
+      "status": "completed",
+      "person_id": 5920,
+      "details": {
+        "reason": "No qualifying FUB note found in 20+ days; reassigned to Lead Pond by approved Phase 2 automation.",
+        "stage": "Lead"
+      }
+    },
+    {
+      "created_at": "2026-06-03T22:34:44.803781+00:00",
+      "action": "stale_agent_pond_reassignment",
+      "status": "completed",
+      "person_id": 5922,
+      "details": {
+        "reason": "No qualifying FUB note found in 20+ days; reassigned to Lead Pond by approved Phase 2 automation.",
+        "stage": "Lead"
+      }
+    },
+    {
+      "created_at": "2026-06-03T22:34:38.233767+00:00",
+      "action": "stale_agent_pond_reassignment",
+      "status": "completed",
+      "person_id": 5925,
+      "details": {
+        "reason": "No qualifying FUB note found in 20+ days; reassigned to Lead Pond by approved Phase 2 automation.",
+        "stage": "Lead"
+      }
+    },
+    {
+      "created_at": "2026-06-03T22:34:34.557746+00:00",
+      "action": "stale_agent_pond_reassignment",
+      "status": "completed",
+      "person_id": 5927,
+      "details": {
+        "reason": "No qualifying FUB note found in 20+ days; reassigned to Lead Pond by approved Phase 2 automation.",
+        "stage": "Lead"
+      }
+    },
+    {
+      "created_at": "2026-06-03T22:34:30.437987+00:00",
+      "action": "stale_agent_pond_reassignment",
+      "status": "completed",
+      "person_id": 5930,
+      "details": {
+        "reason": "No qualifying FUB note found in 20+ days; reassigned to Lead Pond by approved Phase 2 automation.",
+        "stage": "Lead"
+      }
+    },
+    {
+      "created_at": "2026-06-03T22:34:26.671155+00:00",
+      "action": "stale_agent_pond_reassignment",
+      "status": "completed",
+      "person_id": 5931,
+      "details": {
+        "reason": "No qualifying FUB note found in 20+ days; reassigned to Lead Pond by approved Phase 2 automation.",
+        "stage": "Lead"
+      }
+    },
+    {
+      "created_at": "2026-06-03T22:34:23.185725+00:00",
+      "action": "stale_agent_pond_reassignment",
+      "status": "completed",
+      "person_id": 5933,
+      "details": {
+        "reason": "No qualifying FUB note found in 20+ days; reassigned to Lead Pond by approved Phase 2 automation.",
+        "stage": "Lead"
+      }
+    },
+    {
+      "created_at": "2026-06-03T22:34:18.710946+00:00",
+      "action": "stale_agent_pond_reassignment",
+      "status": "completed",
+      "person_id": 5934,
+      "details": {
+        "reason": "No qualifying FUB note found in 20+ days; reassigned to Lead Pond by approved Phase 2 automation.",
+        "stage": "Lead"
+      }
+    },
+    {
+      "created_at": "2026-06-03T22:34:14.777229+00:00",
+      "action": "stale_agent_pond_reassignment",
+      "status": "completed",
+      "person_id": 5935,
+      "details": {
+        "reason": "No qualifying FUB note found in 20+ days; reassigned to Lead Pond by approved Phase 2 automation.",
+        "stage": "Nurture"
+      }
+    },
+    {
+      "created_at": "2026-06-03T22:34:10.486173+00:00",
+      "action": "stale_agent_pond_reassignment",
+      "status": "completed",
+      "person_id": 5939,
+      "details": {
+        "reason": "No qualifying FUB note found in 20+ days; reassigned to Lead Pond by approved Phase 2 automation.",
+        "stage": "Lead"
+      }
+    },
+    {
+      "created_at": "2026-06-03T22:34:06.850279+00:00",
+      "action": "stale_agent_pond_reassignment",
+      "status": "completed",
+      "person_id": 5944,
+      "details": {
+        "reason": "No qualifying FUB note found in 20+ days; reassigned to Lead Pond by approved Phase 2 automation.",
+        "stage": "Lead"
+      }
+    },
+    {
+      "created_at": "2026-06-03T22:34:02.806815+00:00",
+      "action": "stale_agent_pond_reassignment",
+      "status": "completed",
+      "person_id": 5945,
+      "details": {
+        "reason": "No qualifying FUB note found in 20+ days; reassigned to Lead Pond by approved Phase 2 automation.",
+        "stage": "Lead"
+      }
+    },
+    {
+      "created_at": "2026-06-03T22:33:58.807099+00:00",
+      "action": "stale_agent_pond_reassignment",
+      "status": "completed",
+      "person_id": 5948,
+      "details": {
+        "reason": "No qualifying FUB note found in 20+ days; reassigned to Lead Pond by approved Phase 2 automation.",
+        "stage": "Lead"
+      }
+    },
+    {
+      "created_at": "2026-06-03T22:33:55.162711+00:00",
+      "action": "stale_agent_pond_reassignment",
+      "status": "completed",
+      "person_id": 5949,
+      "details": {
+        "reason": "No qualifying FUB note found in 20+ days; reassigned to Lead Pond by approved Phase 2 automation.",
+        "stage": "Lead"
+      }
+    },
+    {
+      "created_at": "2026-06-03T22:33:51.802936+00:00",
+      "action": "stale_agent_pond_reassignment",
+      "status": "completed",
+      "person_id": 5951,
+      "details": {
+        "reason": "No qualifying FUB note found in 20+ days; reassigned to Lead Pond by approved Phase 2 automation.",
+        "stage": "Lead"
+      }
+    },
+    {
+      "created_at": "2026-06-03T22:33:47.964656+00:00",
+      "action": "stale_agent_pond_reassignment",
+      "status": "completed",
+      "person_id": 5953,
+      "details": {
+        "reason": "No qualifying FUB note found in 20+ days; reassigned to Lead Pond by approved Phase 2 automation.",
+        "stage": "Lead"
+      }
+    },
+    {
+      "created_at": "2026-06-03T22:33:44.649267+00:00",
+      "action": "stale_agent_pond_reassignment",
+      "status": "completed",
+      "person_id": 5954,
+      "details": {
+        "reason": "No qualifying FUB note found in 20+ days; reassigned to Lead Pond by approved Phase 2 automation.",
+        "stage": "Lead"
+      }
+    },
+    {
+      "created_at": "2026-06-03T22:33:40.615792+00:00",
+      "action": "stale_agent_pond_reassignment",
+      "status": "completed",
+      "person_id": 5956,
+      "details": {
+        "reason": "No qualifying FUB note found in 20+ days; reassigned to Lead Pond by approved Phase 2 automation.",
+        "stage": "Nurture"
+      }
+    },
+    {
+      "created_at": "2026-06-03T22:33:36.729004+00:00",
+      "action": "stale_agent_pond_reassignment",
+      "status": "completed",
+      "person_id": 5957,
+      "details": {
+        "reason": "No qualifying FUB note found in 20+ days; reassigned to Lead Pond by approved Phase 2 automation.",
+        "stage": "Lead"
+      }
+    },
+    {
+      "created_at": "2026-06-03T22:33:33.415878+00:00",
+      "action": "stale_agent_pond_reassignment",
+      "status": "completed",
+      "person_id": 5959,
+      "details": {
+        "reason": "No qualifying FUB note found in 20+ days; reassigned to Lead Pond by approved Phase 2 automation.",
+        "stage": "Lead"
+      }
+    },
+    {
+      "created_at": "2026-06-03T22:33:29.039938+00:00",
+      "action": "stale_agent_pond_reassignment",
+      "status": "completed",
+      "person_id": 5960,
+      "details": {
+        "reason": "No qualifying FUB note found in 20+ days; reassigned to Lead Pond by approved Phase 2 automation.",
+        "stage": "Lead"
+      }
+    },
+    {
+      "created_at": "2026-06-03T22:33:25.523868+00:00",
+      "action": "stale_agent_pond_reassignment",
+      "status": "completed",
+      "person_id": 5961,
+      "details": {
+        "reason": "No qualifying FUB note found in 20+ days; reassigned to Lead Pond by approved Phase 2 automation.",
+        "stage": "Lead"
+      }
+    }
+  ]
+}
