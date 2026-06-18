@@ -47,12 +47,6 @@ stale_reassignment_excluded_stages:
 # Confirmed from GET /users: Peter Allen, peter@lifestyledesignrealty.com, Broker, Active.
 peter_name: "Peter Allen"
 peter_user_id: 2
-# Agents excluded from ALL automation: digest emails, reassignments, video gen, etc.
-# Luke Durbin (id=16) and Bebe Gutierrez (id=34) are no longer active agents.
-# NOTE: They must also be deactivated in Follow Up Boss directly to fully remove them from the FUB user list.
-excluded_user_ids:
-  - 16
-  - 34
 
 # Confirmed account stages from read-only probe:
 # Lead, Hot Prospect, Nurture, Active Client, Pending, Closed, Past Client, Sphere, Trash, Unresponsive.
@@ -105,25 +99,6 @@ pond_intent_keywords:
   - "call me"
   - "when"
   - "how much"
-
-# Phase 3 — Closed/Past Client/Sphere quarterly check-in drip
-# Approved by Peter on 2026-06-12. Email-only. Signed 'Truly, Peter'.
-# Includes hyper-local neighborhood spots (restaurants, bars, cafes, parks) near the closed property address.
-phase3_closed_drip_enabled: true
-phase3_cadence_days: 90
-phase3_max_emails_per_run: 20
-phase3_eligible_stages:
-  - "Closed"
-  - "Past Client"
-  - "Sphere"
-phase3_daily_summary_enabled: true
-
-# Pond nurture SMS — FUB native SMS sent alongside the daily pond nurture emails
-# Uses the same FUB /textMessages API as the Lifestyle Bot (NOT Twilio)
-# Deduplication: leads already texted by Lifestyle Bot today are skipped
-pond_nurture_sms_enabled: false
-pond_nurture_sms_daily_cap: 300
-pond_nurture_sms_from_number: "5203737839"
 
 # Cities/markets to use in AI market updates. Replace with your active service markets.
 target_cities:
