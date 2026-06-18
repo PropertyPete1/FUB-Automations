@@ -103,7 +103,21 @@ export const SKIP_STAGES = new Set([
   "Trash",
 ]);
 
-export const STALE_DAYS_THRESHOLD = 20;
+/**
+ * Minimum days of inactivity before the bot starts following up on an agent lead.
+ * Bots work the 3-19 day window:
+ *   Day 1-2:  Too fresh - agent is actively working it, bot stays out
+ *   Day 3-19: Bot monitors notes; follows up every 3 days ONLY if agent has not
+ *   Day 20+:  Python automation moves lead to pond -> pond nurture bot takes over
+ */
+export const STALE_DAYS_THRESHOLD = 3;
+
+/**
+ * Maximum days before the bot stops following up.
+ * At 20 days the 8am Python automation moves the lead to the pond.
+ * Bots must not chase leads that are already in the pond.
+ */
+export const BOT_WINDOW_MAX_DAYS = 19;
 export const MAX_LEADS_PER_RUN = 15;
 
 // ─── FUB API helpers ─────────────────────────────────────────────────────────
@@ -228,7 +242,13 @@ export function daysStale(person: FubPerson): number {
 
 /**
  * Determine if a lead is eligible for bot follow-up.
- * Excludes: skip stages, pond leads, DNC/opt-out, not stale enough.
+ *
+ * Works the 3-19 day window:
+ *   - Day 0-2:  Too fresh — agent is on it, bot stays out
+ *   - Day 3-19: Bot steps in if agent has no recent note (shouldSkipLead handles that)
+ *   - Day 20+:  Python automation already moved lead to pond — pond nurture takes over
+ *
+ * Excludes: skip stages, pond leads, DNC/opt-out, outside the 3-19 day window.
  */
 export function isEligible(person: FubPerson): boolean {
   const stage = (person.stage ?? "").trim();
@@ -236,7 +256,9 @@ export function isEligible(person: FubPerson): boolean {
   if (person.assignedPondId) return false; // already on a pond — handled by pond nurture
   if (person.textOptOut) return false;
   if (hasDncTag(person)) return false;
-  if (daysStale(person) < STALE_DAYS_THRESHOLD) return false;
+  const days = daysStale(person);
+  if (days < STALE_DAYS_THRESHOLD) return false;   // too fresh — agent is on it
+  if (days >= BOT_WINDOW_MAX_DAYS) return false;    // 20+ days → pond reassignment handles it
   return true;
 }
 
@@ -245,7 +267,9 @@ export function isEligible(person: FubPerson): boolean {
 /**
  * The FUB Nurture Dashboard Power Queue URL — source of truth for 1-20 day stale leads.
  * The Power Queue shows leads the AGENT should personally text (days 1-20).
- * The bot handles leads 20+ days stale via email — completely separate population.
+ * The bot handles leads 3–19 days stale via email — monitoring notes so it only
+ * follows up when the agent hasn't already. At 20 days, Python automation moves
+ * the lead to the pond and the pond nurture bot takes over.
  */
 const POWER_QUEUE_API = "https://fub-nurture-phfprjui.manus.space/api/trpc/fub.getPendingQueue";
 
@@ -705,7 +729,7 @@ export async function sendClockinEmail(opts: {
   agentFirstName: string;
   agentLastName: string;
   agentEmail: string;
-  leadsQueued: number;          // Bot's job: 20+ day stale leads the bot will email today
+  leadsQueued: number;          // Bot's job: 3-19 day stale leads the bot will email today
   powerQueueCount?: number;     // Agent's job: 1-20 day stale leads in the Power Queue
   accentColor?: string;
   headerGradient?: string;
@@ -778,7 +802,7 @@ export async function sendClockinEmail(opts: {
             <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border-left:4px solid ${accent};border-radius:0 10px 10px 0;">
               <tr><td style="padding:20px 24px;">
                 <table cellpadding="0" cellspacing="0" width="100%">
-                  <tr><td style="padding:6px 0;font-size:14px;color:#374151;line-height:1.7;">🔍 &nbsp;Scan leads assigned to <strong>${isCombined ? 'Steven and Peter' : agentFirstName}</strong> with 20+ days no activity</td></tr>
+                  <tr><td style="padding:6px 0;font-size:14px;color:#374151;line-height:1.7;">🔍 &nbsp;Scan leads assigned to <strong>${isCombined ? 'Steven and Peter' : agentFirstName}</strong> with 3–19 days no agent activity</td></tr>
                   <tr><td style="padding:6px 0;font-size:14px;color:#374151;line-height:1.7;">📧 &nbsp;Send personalized, AI-crafted follow-up emails to eligible leads</td></tr>
                   <tr><td style="padding:6px 0;font-size:14px;color:#374151;line-height:1.7;">📝 &nbsp;Log a note in Follow Up Boss for every lead contacted</td></tr>
                   <tr><td style="padding:6px 0;font-size:14px;color:#374151;line-height:1.7;">📊 &nbsp;Send a full summary report at <strong>6:00 PM CT</strong></td></tr>
@@ -813,7 +837,7 @@ export async function sendClockinEmail(opts: {
                 <!-- BOT'S JOB -->
                 <td width="48%" valign="top" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:18px 20px;">
                   <p style="margin:0 0 6px 0;font-size:11px;color:#166534;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;">🤖 My Job (Bot)</p>
-                  <p style="margin:0 0 10px 0;font-size:14px;color:#374151;line-height:1.6;">At <strong>10:05 AM CT</strong> I will automatically scan your leads, filter out active clients, and send personalized follow-up emails to everyone who's gone <strong>20+ days without contact</strong>. You don't need to do anything — I handle it.</p>
+                  <p style="margin:0 0 10px 0;font-size:14px;color:#374151;line-height:1.6;">At <strong>10:05 AM CT</strong> I will automatically scan your leads, check the notes to see if you've already been in touch, and send personalized follow-up emails to leads with <strong>3–19 days</strong> of no agent activity. If you left a note, I'll skip it — I only step in when a lead needs a nudge. You don't need to do anything — I handle it.</p>
                   <p style="margin:0;font-size:13px;color:#166534;font-weight:600;">✅ Sit back — I've got this covered.</p>
                 </td>
                 <td width="4%"></td>
