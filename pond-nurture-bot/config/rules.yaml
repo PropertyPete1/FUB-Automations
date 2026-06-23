@@ -6,20 +6,21 @@ company_name: "Lifestyle Design Realty"
 company_address: "1209 S Saint Marys St #232, San Antonio, TX 78210"
 owner_email: "peter@lifestyledesignrealty.com"
 default_agent_reminder_cc: "peter@lifestyledesignrealty.com"
-agent_reminder_emails_enabled: true
+# Agent reminder digest emails: DISABLED — replaced by Lifestyle Bot clock-in/clock-out emails.
+agent_reminder_emails_enabled: false
 agent_reminder_broadcast_mode_enabled: true
 agent_reminder_cc_owner: true
 agent_reminder_delivery_mode: "daily_digest"
 email_outreach_enabled: true
 customer_reengagement_emails_enabled: true
-sms_outreach_enabled: false
+sms_outreach_enabled: true
 use_agent_sender_for_assigned_leads: false
 email_sender_domain: "lifestyledesignrealty.com"
 customer_default_sender_email: "peter@lifestyledesignrealty.com"
 customer_sender_policy: "peter_only_phase2_live_approved"
 
 # Phase 2 customer pond nurture and stale-agent safeguards.
-# Customer emails/reassignment approved live by owner on 2026-06-03; SMS remains disabled.
+# Customer emails/reassignment approved live by owner on 2026-06-03; pond SMS approved by owner on 2026-06-20.
 pond_nurture_only: true
 stale_agent_no_note_reassignment_enabled: true
 stale_agent_no_note_days: 20
@@ -47,6 +48,12 @@ stale_reassignment_excluded_stages:
 # Confirmed from GET /users: Peter Allen, peter@lifestyledesignrealty.com, Broker, Active.
 peter_name: "Peter Allen"
 peter_user_id: 2
+# Agents excluded from ALL automation: digest emails, reassignments, video gen, etc.
+# Luke Durbin (id=16) and Bebe Gutierrez (id=34) are no longer active agents.
+# NOTE: They must also be deactivated in Follow Up Boss directly to fully remove them from the FUB user list.
+excluded_user_ids:
+  - 16
+  - 34
 
 # Confirmed account stages from read-only probe:
 # Lead, Hot Prospect, Nurture, Active Client, Pending, Closed, Past Client, Sphere, Trash, Unresponsive.
@@ -78,7 +85,7 @@ excluded_tags:
   - "do not email"
   - "manual review"
 
-# Compliance tags. SMS/text outreach is disabled by owner request.
+# Compliance tags. Pond SMS enabled by owner on 2026-06-20 via FUB native /textMessages API.
 sms_consent_tags: []
 email_opt_out_tags:
   - "email opt out"
@@ -86,19 +93,42 @@ email_opt_out_tags:
 sms_opt_out_tags: []
 
 # Purchase intent keywords to trigger pond lead auto-reassignment to Peter
-pond_intent_keywords:
-  - "yes"
-  - "interested"
-  - "ready"
-  - "looking"
-  - "buy"
-  - "home"
-  - "price"
-  - "schedule"
-  - "tour"
-  - "call me"
-  - "when"
-  - "how much"
+# pond_intent_keywords: REMOVED — intent detection is now fully AI-powered.
+# The AI classifier (classify_lead_intent) reads all inbound communications and
+# classifies intent into: buying_intent | future_timeline | opt_out | none
+# with a confidence gate (>=75%) before taking any action. No keyword lists needed.
+
+# Phase 3 — Closed/Past Client/Sphere quarterly check-in drip
+# Approved by Peter on 2026-06-12. Email-only. Signed 'Truly, Peter'.
+# Includes hyper-local neighborhood spots (restaurants, bars, cafes, parks) near the closed property address.
+phase3_closed_drip_enabled: true
+phase3_cadence_days: 90
+phase3_max_emails_per_run: 20
+phase3_eligible_stages:
+  - "Closed"
+  - "Past Client"
+  - "Sphere"
+phase3_daily_summary_enabled: true
+
+# Long-Term Nurture Reply Handler
+# Detects future-timeline replies ("not ready yet", "next year", etc.) from pond leads,
+# moves them to the Nurture stage, tags them, and enrolls them in a 60-day AI email drip.
+# Each email is freshly AI-written (no templates). Rotates: market update → referral ask → lifestyle.
+# Disabled by default — enable after Peter reviews and approves.
+long_term_nurture_enabled: false
+long_term_nurture_cadence_days: 60
+long_term_nurture_max_emails_per_run: 20
+long_term_nurture_stage: "Nurture"
+long_term_nurture_suppression_tag: "long-term-nurture"
+# long_term_nurture_future_keywords: REMOVED — future-timeline detection is now AI-powered.
+# The same classify_lead_intent call handles this classification automatically.
+
+# Pond nurture SMS — FUB native SMS sent alongside the daily pond nurture emails
+# Uses the same FUB /textMessages API as the Lifestyle Bot (NOT Twilio)
+# Deduplication: leads already texted by Lifestyle Bot today are skipped
+pond_nurture_sms_enabled: true
+pond_nurture_sms_daily_cap: 300
+pond_nurture_sms_from_number: "5203737839"
 
 # Cities/markets to use in AI market updates. Replace with your active service markets.
 target_cities:
