@@ -15,6 +15,7 @@
 import { getUnresolvedErrors, markErrorsResolved, markErrorsUnfixable, pruneOldErrorLogs, getUnfixedObservations, markObservationFixed, pruneOldObservations, writeObservation, getDb } from "./db";
 import { clearRosterCache } from "./dashboardData";
 import { getSuppressionCount, getSuppressionList } from "./compliance";
+import { invokeLLM } from "./_core/llm";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -163,11 +164,177 @@ const FIX_STRATEGIES: Partial<Record<ErrorCategory, FixStrategy>> & { other: Fix
   },
 };
 
+// ── AI: Diagnose and attempt fix for unknown/unhandled errors ────────────────
+
+interface AIDiagnosis {
+  canFix: boolean;
+  confidence: number; // 0-100
+  fixAction: "clear_cache" | "mark_transient" | "flag_manual" | "none";
+  explanation: string;
+  morningNote: string;
+}
+
+async function diagnoseAndFix(
+  category: string,
+  errors: Array<{ id: number; errorMessage: string; action: string | null }>
+): Promise<{ fixed: boolean; note: string }> {
+  try {
+    const sampleMessages = errors.slice(0, 5).map(e => e.errorMessage).join("\n");
+    const response = await invokeLLM({
+      messages: [
+        {
+          role: "system",
+          content: `You are the nightly self-healing AI for a real estate lead nurture platform called Lifestyle Command Center.
+
+The platform has these components:
+- FUB (Follow Up Boss) CRM integration — fetches leads, writes notes, sends emails
+- Lifestyle Bots — AI email bots that nurture assigned leads daily at 10am CT
+- Pond Nurture Bot — AI email bot for unassigned pond leads
+- Power Queue — agent text queue for manual SMS follow-ups
+- Bot Monitor — 30-minute health check that writes observations to the database
+- Nightly Healer (you) — runs at 4am CT, reads errors, attempts fixes, sends morning summary
+
+Available fix actions:
+- clear_cache: Clears the roster/data cache so fresh data is fetched from FUB on next load. Safe for any FUB API, roster, or data-fetch error.
+- mark_transient: Mark as self-correcting — the next scheduled run will retry automatically. Use for rate limits, timeouts, temporary network errors.
+- flag_manual: This error requires a human to look at the code. Use for crashes, schema errors, authentication failures, or anything that will keep recurring.
+- none: No action needed — purely informational.
+
+Respond ONLY with valid JSON matching this exact schema:
+{
+  "canFix": boolean,
+  "confidence": number (0-100),
+  "fixAction": "clear_cache" | "mark_transient" | "flag_manual" | "none",
+  "explanation": "one sentence explaining what caused this error",
+  "morningNote": "one sentence for the morning email — plain English, no jargon"
+}`,
+        },
+        {
+          role: "user",
+          content: `Error category: ${category}\n\nError messages (up to 5 samples):\n${sampleMessages}\n\nDiagnose these errors and decide the best fix action.`,
+        },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "ai_diagnosis",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              canFix:      { type: "boolean" },
+              confidence:  { type: "number" },
+              fixAction:   { type: "string", enum: ["clear_cache", "mark_transient", "flag_manual", "none"] },
+              explanation: { type: "string" },
+              morningNote: { type: "string" },
+            },
+            required: ["canFix", "confidence", "fixAction", "explanation", "morningNote"],
+            additionalProperties: false,
+          },
+        },
+      },
+    });
+
+    const raw = response.choices?.[0]?.message?.content ?? "{}";
+    const diagnosis: AIDiagnosis = JSON.parse(typeof raw === "string" ? raw : JSON.stringify(raw));
+
+    // Confidence gate: only act if AI is ≥70% confident
+    if (diagnosis.confidence < 70) {
+      return { fixed: false, note: `AI diagnosis low confidence (${diagnosis.confidence}%): ${diagnosis.explanation} — flagged for manual review` };
+    }
+
+    if (diagnosis.fixAction === "clear_cache") {
+      try {
+        clearRosterCache();
+        return { fixed: true, note: `AI fix (${diagnosis.confidence}% confidence): ${diagnosis.morningNote} — cache cleared` };
+      } catch (e) {
+        return { fixed: false, note: `AI suggested cache clear but it failed: ${e}` };
+      }
+    }
+
+    if (diagnosis.fixAction === "mark_transient") {
+      return { fixed: true, note: `AI fix (${diagnosis.confidence}% confidence): ${diagnosis.morningNote} — marked as transient, will self-correct` };
+    }
+
+    if (diagnosis.fixAction === "flag_manual") {
+      return { fixed: false, note: `AI flagged for manual review (${diagnosis.confidence}% confidence): ${diagnosis.morningNote}` };
+    }
+
+    return { fixed: true, note: `AI: ${diagnosis.morningNote}` };
+  } catch (e) {
+    console.warn("[nightlyHealer] AI diagnosis failed, falling back to default:", e);
+    // Fallback: treat as transient
+    try {
+      clearRosterCache();
+      return { fixed: true, note: "AI diagnosis unavailable — cache cleared as precaution" };
+    } catch {
+      return { fixed: false, note: "AI diagnosis unavailable — flagged for manual review" };
+    }
+  }
+}
+
+// ── AI: Generate plain-English morning summary ────────────────────────────────
+
+async function generateAISummary(
+  result: HealerResult,
+  observations: Array<{ source: string; severity: string; category: string; message: string; detail: string | null }>,
+  suppressionToday: number,
+  suppressionTotal: number
+): Promise<string> {
+  try {
+    const obsErrors   = observations.filter(o => o.severity === "error");
+    const obsWarnings = observations.filter(o => o.severity === "warning");
+    const obsFixed    = observations.filter(o => o.severity === "fixed");
+
+    const contextJson = JSON.stringify({
+      errorsFound:        result.errorsFound,
+      errorsFixed:        result.errorsFixed,
+      errorsUnfixable:    result.errorsUnfixable,
+      cacheCleared:       result.cacheCleared,
+      observationsFound:  result.observationsFound,
+      observationsFixed:  result.observationsFixed,
+      suppressionToday,
+      suppressionTotal,
+      botErrors:    obsErrors.map(o => ({ source: o.source, message: o.message, detail: (o.detail ?? "").slice(0, 150) })),
+      botWarnings:  obsWarnings.map(o => ({ source: o.source, message: o.message, detail: (o.detail ?? "").slice(0, 150) })),
+      autoFixed:    obsFixed.map(o => ({ source: o.source, message: o.message })),
+      fixSummary:   result.fixSummary.map(f => ({ category: f.category, count: f.count, note: f.fixApplied })),
+    }, null, 2);
+
+    const response = await invokeLLM({
+      messages: [
+        {
+          role: "system",
+          content: `You are writing the morning health summary email for Peter Allen, the owner of Lifestyle Design Realty.
+Peter runs an AI-powered real estate lead nurture platform. Every morning at 4am, a nightly healer runs and you write the summary.
+
+Write in a clear, confident, professional tone — like a trusted operations manager reporting to the owner.
+Be concise. No bullet walls. Use short paragraphs.
+If everything is healthy, say so clearly and positively.
+If there are issues, explain them in plain English (no error codes, no jargon) and say what was done or what needs attention.
+Never say "I" — write as if the system is reporting to Peter.
+Maximum 150 words.`,
+        },
+        {
+          role: "user",
+          content: `Here is the overnight health data:\n\n${contextJson}\n\nWrite the morning summary paragraph(s) for Peter.`,
+        },
+      ],
+    });
+
+    const summary = response.choices?.[0]?.message?.content ?? "";
+    return typeof summary === "string" ? summary.trim() : "";
+  } catch (e) {
+    console.warn("[nightlyHealer] AI summary generation failed:", e);
+    return ""; // fallback to rule-based summary
+  }
+}
+
 // ── Email helper ──────────────────────────────────────────────────────────────
 
 async function sendMorningSummary(
   result: HealerResult,
-  observations: Array<{ source: string; severity: string; category: string; message: string; detail: string | null; createdAt: Date }>
+  observations: Array<{ source: string; severity: string; category: string; message: string; detail: string | null; createdAt: Date; fixedAt?: Date | null }>
 ): Promise<boolean> {
   try {
     const { errorsFound, errorsFixed, errorsUnfixable, fixSummary, cacheCleared, prunedRows, observationsFound, observationsFixed } = result;
@@ -175,11 +342,25 @@ async function sendMorningSummary(
     const statusEmoji = errorsUnfixable > 0 || hasObsIssues ? "⚠️" : errorsFixed > 0 || observationsFixed > 0 ? "✅" : "🌅";
     const dateStr = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
 
+    // ── Suppression stats (last 24 hours) ──────────────────────────────────
+    let suppressionToday = 0;
+    let suppressionTotal = 0;
+    let recentSuppressions: Array<{ name: string | null; reason: string | null }> = [];
+    try {
+      suppressionToday = await getSuppressionCount(24);
+      const allSuppressed = await getSuppressionList(200);
+      suppressionTotal = allSuppressed.length;
+      recentSuppressions = allSuppressed.slice(0, 5).map(s => ({ name: s.leadName, reason: s.reason }));
+    } catch { /* non-fatal */ }
+
+    // ── AI-generated plain-English summary ─────────────────────────────────
+    const aiSummary = await generateAISummary(result, observations, suppressionToday, suppressionTotal);
+
+    // ── Rule-based detail sections (always included below AI summary) ───────
     const fixLines = fixSummary.length > 0
       ? fixSummary.map(f => `  • ${f.category} (${f.count} error${f.count !== 1 ? "s" : ""}): ${f.fixApplied}`).join("\n")
       : "  • No UI errors found — dashboard ran clean";
 
-    // Build bot observations section
     const obsErrors   = observations.filter(o => o.severity === "error");
     const obsWarnings = observations.filter(o => o.severity === "warning");
     const obsFixed    = observations.filter(o => o.severity === "fixed");
@@ -198,7 +379,6 @@ async function sendMorningSummary(
       obsLines.push(`  🔧 AUTO-FIXED (${obsFixed.length}):`);
       obsFixed.forEach(o => obsLines.push(`     [${o.source}] ${o.message}`));
     }
-    // Summarize info rows by source (don't list every single one)
     const infoBySource = obsInfo.reduce((acc, o) => { acc[o.source] = (acc[o.source] || 0) + 1; return acc; }, {} as Record<string, number>);
     if (Object.keys(infoBySource).length > 0) {
       obsLines.push(`  ℹ️  INFO: ` + Object.entries(infoBySource).map(([s, c]) => `${s}: ${c} events`).join(", "));
@@ -206,17 +386,6 @@ async function sendMorningSummary(
     if (obsLines.length === 0) {
       obsLines.push("  • No bot observations recorded — all bots ran silently");
     }
-
-    // ── Suppression stats (last 24 hours) ──────────────────────────────────
-    let suppressionToday = 0;
-    let suppressionTotal = 0;
-    let recentSuppressions: Array<{ name: string | null; reason: string | null }> = [];
-    try {
-      suppressionToday = await getSuppressionCount(24);
-      const allSuppressed = await getSuppressionList(200);
-      suppressionTotal = allSuppressed.length;
-      recentSuppressions = allSuppressed.slice(0, 5).map(s => ({ name: s.leadName, reason: s.reason }));
-    } catch { /* non-fatal */ }
 
     const suppressionLines: string[] = [];
     suppressionLines.push(`  New suppressions (last 24h): ${suppressionToday}`);
@@ -232,8 +401,16 @@ async function sendMorningSummary(
       `${statusEmoji} LIFESTYLE COMMAND CENTER — MORNING HEALTH REPORT`,
       `${dateStr}`,
       ``,
+      // ── AI Summary (top of email — plain English) ──────────────────────────
+      ...(aiSummary ? [
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+        `AI OVERNIGHT SUMMARY`,
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+        aiSummary,
+        ``,
+      ] : []),
       `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-      `OVERNIGHT HEALING SUMMARY (Dashboard UI Errors)`,
+      `OVERNIGHT HEALING DETAIL`,
       `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
       `  Dashboard UI errors found:    ${errorsFound}`,
       `  Errors auto-fixed overnight:  ${errorsFixed}`,
@@ -265,7 +442,6 @@ async function sendMorningSummary(
       `Lifestyle Command Center • Built exclusively for Lifestyle Design Realty`,
     ].join("\n");
 
-    // Use the notifyOwner system built into the platform
     const { notifyOwner } = await import("./_core/notification");
     const sent = await notifyOwner({ title: subject, content: body });
     return sent;
@@ -468,7 +644,14 @@ export async function runNightlyHealer(): Promise<HealerResult> {
   }
 
   for (const [category, catErrors] of Array.from(byCategory.entries())) {
-    const strategy: FixStrategy = (FIX_STRATEGIES as Record<string, FixStrategy>)[category] ?? FIX_STRATEGIES.other;
+    // If the category has no known strategy, use AI to diagnose and fix
+    const hasKnownStrategy = category in FIX_STRATEGIES;
+    const strategy: FixStrategy = hasKnownStrategy
+      ? (FIX_STRATEGIES as Record<string, FixStrategy>)[category]
+      : {
+          description: `AI-diagnosed fix for unknown category: ${category}`,
+          apply: async (ids, errors) => diagnoseAndFix(category, errors),
+        };
     const ids = catErrors.map(e => e.id);
     const errObjs = catErrors.map((e: { id: number; errorMessage: string; action: string | null }) => ({ id: e.id, errorMessage: e.errorMessage, action: e.action }));
 
