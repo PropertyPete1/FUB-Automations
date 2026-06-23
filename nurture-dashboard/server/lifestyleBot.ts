@@ -27,7 +27,7 @@
 import { ENV } from "./_core/env";
 import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
-import { dbRecordSmsSentToday, getSmsSentTodayIds, getSmsSentTodayCount, getRecentBotRuns, getRecentObservations, insertBotRunLog, writeObservation, getOvernightHealerSummary } from "./db";
+import { dbRecordSmsSentToday, getSmsSentTodayIds, getRecentBotRuns, getRecentObservations, insertBotRunLog, writeObservation, getOvernightHealerSummary } from "./db";
 import { isLeadSuppressed } from "./compliance";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -216,8 +216,10 @@ async function getPeterUserId(): Promise<number | null> {
 }
 
 /**
- * Fetch pond leads assigned to Peter that are 20+ days stale and have a phone.
+ * Fetch pond leads assigned to Peter that are 20+ days stale.
  * Returns up to MAX_LEADS_PER_RUN leads.
+ * NOTE: The bot posts FUB notes (not emails to leads directly) — filtering
+ * is based on stage/tag exclusions and daily dedup, not email/phone presence.
  */
 async function getPondLeadsForBot(peterUserId: number, alreadySentToday: Set<number>): Promise<RawLead[]> {
   const cutoffDate = new Date(Date.now() - STALE_DAYS_THRESHOLD * 24 * 60 * 60 * 1000)
@@ -231,20 +233,17 @@ async function getPondLeadsForBot(peterUserId: number, alreadySentToday: Set<num
   );
   const people: RawLead[] = data.people || [];
 
-  // Stages that should NOT receive automated texts
+  // Stages that should NOT receive automated outreach
   const SKIP_STAGES = new Set([
     "closed", "closed - won", "closed - lost", "unsubscribed", "do not contact",
     "dnc", "inactive", "dead", "bad data",
   ]);
 
-  // Filter: must have a phone, must not have been texted today, must not be DNC/closed
+  // Filter: must not have been processed today, must not be DNC/closed/opted-out
   const eligible = people.filter(p => {
     if (alreadySentToday.has(p.id)) return false;
-    const phones: any[] = p.phones || [];
-    const phone = phones[0]?.value || phones[0]?.phone || "";
-    if (!phone) return false;
-    // Skip leads who opted out of texts
-    if (p.textOptOut === true) return false;
+    // Skip leads who opted out of emails
+    if (p.emailOptOut === true) return false;
     // Skip leads in closed/DNC stages
     const stage = (p.stage || "").toLowerCase().trim();
     if (stage && SKIP_STAGES.has(stage)) return false;
@@ -383,7 +382,7 @@ export async function runLifestyleBot(triggeredBy: "cron" | "manual" = "cron"): 
     };
   }
 
-  // 2. Get today's already-texted lead IDs to avoid duplicates
+  // 2. Get today's already-processed lead IDs to avoid duplicates
   const alreadySentToday = await getSmsSentTodayIds();
 
   // 3. Fetch eligible pond leads
@@ -454,28 +453,19 @@ export async function runLifestyleBot(triggeredBy: "cron" | "manual" = "cron"): 
         continue;
       }
 
-      // Fetch notes and last inbound text in parallel
-      const [notesRes, textsRes] = await Promise.allSettled([
-        fubGet(`/notes?personId=${person.id}&limit=3`),
-        fubGet(`/textMessages?personId=${person.id}&limit=20`),
-      ]);
+      // Fetch notes for AI context (FUB /textMessages returns 403 — not available)
+      const notesRes = await fubGet(`/notes?personId=${person.id}&limit=3`).catch(() => ({ notes: [] }));
 
       let notes = "";
-      if (notesRes.status === "fulfilled") {
-        const notesArr: any[] = notesRes.value.notes || [];
-        notes = notesArr
-          .slice(0, 3)
-          .map((n: any) => (n.body || n.subject || "").trim().slice(0, 200))
-          .filter(Boolean)
-          .join(" | ");
-      }
+      const notesArr: any[] = notesRes.notes || [];
+      notes = notesArr
+        .slice(0, 3)
+        .map((n: any) => (n.body || n.subject || "").trim().slice(0, 200))
+        .filter(Boolean)
+        .join(" | ");
 
-      let lastInbound = "";
-      if (textsRes.status === "fulfilled") {
-        const msgs: any[] = textsRes.value.textMessages || [];
-        const inbound = msgs.find((m: any) => m.isIncoming === true || m.direction === "inbound");
-        lastInbound = inbound?.message || inbound?.body || "";
-      }
+      // lastInbound is always empty — FUB text API unavailable for this account
+      const lastInbound = "";
 
       // ── Smart Escalation Detection ──────────────────────────────────────────
       // Before generating the draft, check if this lead needs immediate human attention.
@@ -577,7 +567,7 @@ Be conservative — only escalate when clearly warranted.`,
       });
       result.notePosted = true;
 
-      // Record in sms_sent_today
+      // Record in daily dedup table (shared with Power Queue)
       await dbRecordSmsSentToday(person.id, BOT_AGENT_NAME);
       result.recorded = true;
 
@@ -1011,10 +1001,7 @@ export async function sendBotClockinEmail(): Promise<ClockinEmailResult> {
 
       const eligible = people.filter(p => {
         if (alreadySentToday.has(p.id)) return false;
-        const phones: any[] = p.phones || [];
-        const phone = phones[0]?.value || phones[0]?.phone || "";
-        if (!phone) return false;
-        if (p.textOptOut === true) return false;
+        if (p.emailOptOut === true) return false;
         const stage = (p.stage || "").toLowerCase().trim();
         if (stage && SKIP_STAGES.has(stage)) return false;
         const tags: any[] = p.tags || [];

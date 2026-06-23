@@ -88,7 +88,7 @@ function BotResultModal({ result, onClose }: { result: BotResult; onClose: () =>
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-emerald-950/20 border border-emerald-500/20 rounded-xl p-3 text-center">
             <div className="text-2xl font-bold text-emerald-400">{result.leadsProcessed}</div>
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400/70 mt-0.5">Texted</div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400/70 mt-0.5">Processed</div>
           </div>
           <div className="bg-card/4 border border-white/8 rounded-xl p-3 text-center">
             <div className="text-2xl font-bold text-muted-foreground">{result.leadsSkipped}</div>
@@ -234,7 +234,7 @@ export default function LifestyleBotPanel() {
       setBotResult(result as BotResult);
       void refetch();
       void refetchHistory();
-      toast.success(`Lifestyle Bot complete — ${result.leadsProcessed} leads texted`, {
+      toast.success(`Lifestyle Bot complete — ${result.leadsProcessed} leads processed`, {
         description: result.summaryEmailSent ? "Summary email sent to Peter." : undefined,
       });
     },
@@ -276,7 +276,7 @@ export default function LifestyleBotPanel() {
                   </Badge>
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Daily SMS counts for all agents + the Lifestyle Bot · Bot max: {BOT_MAX_PER_RUN}/run
+                  Daily activity for all agents + the Lifestyle Bot · Bot max: {BOT_MAX_PER_RUN}/run
                 </CardDescription>
               </div>
             </div>
@@ -328,7 +328,7 @@ export default function LifestyleBotPanel() {
                 <div>
                   <p className="text-xs font-semibold text-foreground">
                     Last run: {formatRelativeTime(lastRun.runAt)} —{" "}
-                    <span className="text-emerald-400">{lastRun.leadsTexted} leads texted</span>
+                    <span className="text-emerald-400">{lastRun.leadsTexted} leads processed</span>
                     {lastRun.leadsFailed > 0 && (
                       <span className="text-red-400 ml-1">· {lastRun.leadsFailed} failed</span>
                     )}
@@ -367,7 +367,7 @@ export default function LifestyleBotPanel() {
                       <div className={`w-2 h-2 rounded-full flex-shrink-0 ${run.leadsFailed > 0 ? "bg-red-400" : "bg-emerald-400"}`} />
                       <div>
                         <p className="text-xs font-medium text-foreground">
-                          {run.leadsTexted} texted
+                          {run.leadsTexted} processed
                           {run.leadsFailed > 0 && <span className="text-red-400 ml-1">· {run.leadsFailed} failed</span>}
                         </p>
                         <p className="text-[10px] text-muted-foreground">{new Date(run.runAt).toLocaleString()}</p>
@@ -518,11 +518,11 @@ export default function LifestyleBotPanel() {
 
             {/* Two-channel grid */}
             <div className="grid grid-cols-2 gap-3">
-              {/* SMS channel */}
+              {/* FUB Notes channel */}
               <div className="bg-card/60 rounded-lg border border-white/10 p-3 space-y-1.5">
                 <div className="flex items-center gap-1.5">
                   <Phone className="h-3.5 w-3.5 text-purple-400" />
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-white/40">Auto-Texts (SMS)</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-white/40">AI Notes (FUB)</span>
                 </div>
                 <div className="flex items-end gap-1">
                   <span className="text-2xl font-bold text-foreground">{botTextToday}</span>
@@ -531,7 +531,7 @@ export default function LifestyleBotPanel() {
                 <div className="text-[10px] text-white/40">
                   <span className="font-semibold text-foreground">{botTextWeek}</span> this week
                   {allTimeTexted > 0 && <> · <span className="font-semibold text-foreground">{allTimeTexted}</span> all-time</>}
-                  {allTimeRuns > 0 && <div className="text-[10px] text-white/30 mt-0.5">{allTimeRuns} total runs · FUB note posted after every text</div>}
+                  {allTimeRuns > 0 && <div className="text-[10px] text-white/30 mt-0.5">{allTimeRuns} total runs · FUB note posted per lead</div>}
                 </div>
                 <div className="flex items-center gap-1 mt-1">
                   <Calendar className="h-3 w-3 text-white/30" />
@@ -539,7 +539,7 @@ export default function LifestyleBotPanel() {
                 </div>
               </div>
 
-              {/* Email + SMS channel */}
+              {/* Pond Emails channel */}
               <div className="bg-card/60 rounded-lg border border-white/10 p-3 space-y-1.5">
                 <div className="flex items-center gap-1.5">
                   <Mail className="h-3.5 w-3.5 text-purple-400" />
