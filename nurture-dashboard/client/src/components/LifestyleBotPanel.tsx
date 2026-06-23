@@ -254,7 +254,6 @@ export default function LifestyleBotPanel() {
 
   // Live pond nurture stats from SQLite (30s TTL)
   const pondEmailToday = dashStats?.live_stats?.pond_nurture_today ?? null;
-  const pondSmsToday = dashStats?.live_stats?.pond_nurture_sms_today ?? null;
   const pondEmailAllTime = dashStats?.live_stats?.pond_nurture_sent ?? null;
 
   return (
@@ -553,9 +552,6 @@ export default function LifestyleBotPanel() {
                   <span className="text-xs text-white/40 mb-0.5">today</span>
                 </div>
                 <div className="text-[10px] text-white/40">
-                  {pondSmsToday !== null && pondSmsToday > 0 && (
-                    <><span className="font-semibold text-foreground">{pondSmsToday}</span> SMS today · </>
-                  )}
                   {pondEmailAllTime !== null
                     ? <><span className="font-semibold text-foreground">{pondEmailAllTime.toLocaleString()}</span> all-time sent</>
                     : <span className="text-white/30">Loading…</span>
@@ -571,10 +567,7 @@ export default function LifestyleBotPanel() {
 
             {/* Cron schedule summary */}
             <div className="grid grid-cols-2 gap-2 text-[10px]">
-              <div className="flex items-center gap-1.5 text-muted-foreground">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
-                SMS cron: daily 10am CT (incl. weekends)
-              </div>
+
               <div className="flex items-center gap-1.5 text-muted-foreground">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
                 Email cron: daily 8am CT
@@ -585,7 +578,7 @@ export default function LifestyleBotPanel() {
               </div>
               <div className="flex items-center gap-1.5 text-muted-foreground">
                 <div className="w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />
-                Posts FUB note after every text & email
+                Posts FUB note after every email
               </div>
             </div>
           </div>
@@ -929,7 +922,7 @@ export default function LifestyleBotPanel() {
 
           {/* Footer note */}
           <p className="text-[11px] text-white/30 text-center pt-1">
-            Lifestyle Bot runs daily at 10am CT (incl. weekends) · Texts pond leads 20+ days stale · Max 15/run · Posts FUB note after every send
+Lifestyle Bot runs daily at 10am CT (incl. weekends) · Emails pond leads 20+ days stale · Max 15/run · Posts FUB note after every send
           </p>
         </CardContent>
       </Card>
