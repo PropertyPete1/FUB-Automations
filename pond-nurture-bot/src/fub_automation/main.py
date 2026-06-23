@@ -157,6 +157,8 @@ class Rules:
     long_term_nurture_max_emails_per_run: int
     long_term_nurture_stage: str
     long_term_nurture_suppression_tag: str
+    # Email address update scanner — detects "I changed my email" replies and updates FUB automatically
+    email_address_update_scan_enabled: bool
 
     @classmethod
     def load(cls, path: str) -> "Rules":
@@ -228,6 +230,7 @@ class Rules:
             long_term_nurture_stage=data.get("long_term_nurture_stage", "Nurture"),
             long_term_nurture_suppression_tag=data.get("long_term_nurture_suppression_tag", "long-term-nurture"),
             # long_term_nurture_future_keywords removed — future-timeline detection is now AI-powered
+            email_address_update_scan_enabled=bool(data.get("email_address_update_scan_enabled", True)),
         )
 
 
@@ -1179,6 +1182,122 @@ class ContentGenerator:
             LOGGER.warning("AI intent classifier failed for person %s: %s", person.get("id"), exc)
             return {"intent": "none", "confidence": 0, "reason": f"AI error: {exc}", "trigger_snippet": "", "source": "none"}
 
+    def detect_email_change(self, person: dict, emails: List[dict]) -> dict:
+        """AI-powered email address change detector.
+
+        Scans inbound emails for messages where the lead says they have changed
+        their email address and provides a new one.  Returns a structured result::
+
+            {
+              "changed": bool,
+              "new_email": str,          # extracted new address, or ""
+              "confidence": int,         # 0-100
+              "reason": str,             # plain-English explanation
+              "trigger_snippet": str,    # exact excerpt that triggered detection
+            }
+
+        A confidence gate of 85 is applied — only very clear, unambiguous
+        email-change messages are acted on automatically.
+        """
+        # Only look at inbound messages
+        inbound = [e for e in emails if e.get("isIncoming") or e.get("direction") == "incoming"]
+        if not inbound:
+            return {"changed": False, "new_email": "", "confidence": 0, "reason": "No inbound emails", "trigger_snippet": ""}
+
+        # Build a compact text block from the most recent 5 inbound emails
+        snippets: List[str] = []
+        for e in inbound[-5:]:
+            body = (e.get("body") or e.get("message") or "").strip()[:600]
+            subj = (e.get("subject") or "").strip()
+            if body:
+                snippets.append(f"[Subject: {subj}]\n{body}" if subj else body)
+        if not snippets:
+            return {"changed": False, "new_email": "", "confidence": 0, "reason": "No readable inbound email bodies", "trigger_snippet": ""}
+
+        combined = "\n\n---\n\n".join(snippets)
+        person_name = f"{person.get('firstName', '')} {person.get('lastName', '')}".strip()
+
+        prompt = f"""
+            You are an AI assistant for a real estate CRM.  Your only job right now is to
+            detect whether the lead has informed the agent that they have a NEW email address.
+
+            Lead name: {person_name}
+
+            === INBOUND EMAIL TEXT ===
+            {combined}
+            === END ===
+
+            Carefully read the text above.  Determine:
+            1. Did the lead explicitly state they have a new or changed email address?
+            2. If yes, what is the new email address they provided?
+
+            Common patterns to detect:
+            - "I am no longer using this email. Please contact me at [new email]"
+            - "My new email is [new email]"
+            - "Please use [new email] going forward"
+            - "I changed my email to [new email]"
+            - "You can reach me at [new email] instead"
+            - "Contact me at [new email]"
+
+            Rules:
+            - Only return changed=true if the lead EXPLICITLY provides a new email address.
+            - Do NOT infer or guess an email address — it must be clearly stated in the text.
+            - The new_email field must be a valid email format (contains @ and a domain).
+            - If you are not 85%+ confident, return changed=false.
+            - Do NOT flag opt-out messages as email changes.
+
+            Respond ONLY with valid JSON in this exact format:
+            {{
+              "changed": true or false,
+              "new_email": "the.new@email.com or empty string if none",
+              "confidence": 0-100,
+              "reason": "one sentence explanation",
+              "trigger_snippet": "the exact phrase from the email that contains the new address"
+            }}
+        """
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": textwrap.dedent(prompt).strip()}],
+                temperature=0.0,
+                response_format={"type": "json_object"},
+            )
+            if not response.choices or response.choices[0].message.content is None:
+                return {"changed": False, "new_email": "", "confidence": 0, "reason": "Empty AI response", "trigger_snippet": ""}
+            parsed = json.loads(response.choices[0].message.content)
+            changed = bool(parsed.get("changed", False))
+            new_email = str(parsed.get("new_email") or "").strip().lower()
+            confidence = int(parsed.get("confidence") or 0)
+            reason = str(parsed.get("reason") or "").strip()
+            trigger_snippet = str(parsed.get("trigger_snippet") or "").strip()[:300]
+            # Validate email format minimally
+            if changed and ("@" not in new_email or "." not in new_email.split("@")[-1]):
+                LOGGER.warning(
+                    "detect_email_change: AI returned invalid email format '%s' for person %s — ignoring",
+                    new_email, person.get("id"),
+                )
+                return {"changed": False, "new_email": "", "confidence": confidence,
+                        "reason": f"Invalid email format returned by AI: {new_email}", "trigger_snippet": trigger_snippet}
+            # Confidence gate: 85% required for auto-update
+            if changed and confidence < 85:
+                LOGGER.info(
+                    "detect_email_change: low confidence (%s%%) for person %s new_email='%s' — not acting. Reason: %s",
+                    confidence, person.get("id"), new_email, reason,
+                )
+                return {"changed": False, "new_email": new_email, "confidence": confidence,
+                        "reason": f"Low confidence ({confidence}%): {reason}", "trigger_snippet": trigger_snippet}
+            if changed:
+                LOGGER.info(
+                    "detect_email_change: person %s new_email='%s' confidence=%s%% — %s",
+                    person.get("id"), new_email, confidence, reason,
+                )
+            return {"changed": changed, "new_email": new_email, "confidence": confidence,
+                    "reason": reason, "trigger_snippet": trigger_snippet}
+        except Exception as exc:  # noqa: BLE001
+            LOGGER.warning("detect_email_change failed for person %s: %s", person.get("id"), exc)
+            return {"changed": False, "new_email": "", "confidence": 0,
+                    "reason": f"AI error: {exc}", "trigger_snippet": ""}
+
 
 class EmailSender:
     def __init__(self, settings: Settings):
@@ -1792,6 +1911,7 @@ class RuleEngine:
         self.scan_stale_agent_no_note_reassignment()
         self.scan_stale_leads()
         self.scan_agent_followup()
+        self.scan_email_address_updates()
         self.send_phase2_daily_summary()
 
     def scan_stale_leads(self) -> None:
@@ -2046,6 +2166,94 @@ class RuleEngine:
                 self.db.log("pond_keyword_reassignment", "error", person_id, {"error": str(exc)})
         
         LOGGER.info("Pond response scan complete. Scanned %s active candidates, reassigned %s leads.", scanned_count, reassigned_count)
+
+    def scan_email_address_updates(self) -> None:
+        """Scans recent inbound emails from ALL non-excluded leads for email address change notifications.
+
+        When a lead replies saying "I no longer use this email, please contact me at [new]",
+        the system:
+          1. Adds the new email address to the lead's FUB profile (prepended as primary).
+          2. Logs a detailed FUB note with the AI's reasoning and the trigger snippet.
+          3. Tags the lead with 'email-updated-auto' for visibility.
+          4. Logs the event in the audit DB.
+
+        Runs daily as part of run_daily_scans().  Scans the 200 most recently updated leads
+        to keep the run fast — email address changes are rare and almost always come from
+        recently active leads.
+        """
+        if not self.rules.email_address_update_scan_enabled:
+            LOGGER.info("Email address update scan is disabled by rules.yaml (email_address_update_scan_enabled: false)")
+            return
+
+        LOGGER.info("Scanning recent inbound emails for email address change notifications...")
+        candidates = self.fub.get_people(sort="-updated", limit=200)
+        updated_count = 0
+
+        for person in candidates:
+            person_id = int(person["id"])
+            if self.is_excluded(person):
+                continue
+            try:
+                emails = self.fub.get_emails(person_id, limit=15)
+                if not emails:
+                    continue
+
+                result = self.content.detect_email_change(person, emails)
+                if not result.get("changed"):
+                    continue
+
+                new_email = result["new_email"]
+                confidence = result["confidence"]
+                reason = result["reason"]
+                trigger_snippet = result["trigger_snippet"]
+
+                # Check if this email is already on the lead's profile to avoid duplicates
+                existing_emails = [e.get("value", "").strip().lower() for e in (person.get("emails") or [])]
+                if new_email in existing_emails:
+                    LOGGER.info(
+                        "Email address update: person %s already has %s on file — skipping.",
+                        person_id, new_email,
+                    )
+                    continue
+
+                person_name = f"{person.get('firstName', '')} {person.get('lastName', '')}".strip()
+                LOGGER.info(
+                    "Email address update: person %s (%s) — adding new email '%s' (confidence=%s%%)",
+                    person_id, person_name, new_email, confidence,
+                )
+
+                if not self.settings.dry_run:
+                    # Prepend the new email to the existing list so it becomes primary
+                    updated_email_list = [{"value": new_email}] + [
+                        {"value": e} for e in existing_emails if e
+                    ]
+                    self.fub.update_person(person_id, {"emails": updated_email_list})
+                    self.fub.update_person(person_id, {"tags": ["email-updated-auto"]}, merge_tags=True)
+
+                note_title = "✉️ Automation: Email Address Updated"
+                note_body = (
+                    f"Lead provided a new email address and it has been automatically added to their profile.\n\n"
+                    f"• **New email added:** {new_email}\n"
+                    f"• AI confidence: {confidence}%\n"
+                    f"• AI reasoning: {reason}\n"
+                    f"• Trigger snippet: \"{trigger_snippet[:250]}\"\n\n"
+                    f"The new address has been prepended as the primary email. Please verify and remove the old address if no longer valid."
+                )
+                self.fub.add_note(person_id, note_title, note_body)
+                self.db.log("email_address_update", "updated", person_id, {
+                    "new_email": new_email,
+                    "confidence": confidence,
+                    "reason": reason,
+                    "snippet": trigger_snippet[:200],
+                    "dry_run": self.settings.dry_run,
+                })
+                updated_count += 1
+
+            except Exception as exc:  # noqa: BLE001
+                LOGGER.exception("Email address update scan failed for person %s", person_id)
+                self.db.log("email_address_update", "error", person_id, {"error": str(exc)})
+
+        LOGGER.info("Email address update scan complete. Updated %s lead(s).", updated_count)
 
     def has_recent_omnichannel_touch(self, person: dict, days: int) -> bool:
         """Checks if the lead has had any direct outreach (calls, texts, emails, or activities) within the specified days."""

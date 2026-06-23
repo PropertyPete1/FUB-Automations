@@ -123,6 +123,15 @@ long_term_nurture_suppression_tag: "long-term-nurture"
 # long_term_nurture_future_keywords: REMOVED — future-timeline detection is now AI-powered.
 # The same classify_lead_intent call handles this classification automatically.
 
+# Email address update scanner
+# Scans the 200 most recently updated leads daily for inbound emails where the lead
+# says "I no longer use this email, please contact me at [new address]".
+# When detected (AI confidence >= 85%), the new email is added to the lead's FUB
+# profile as the primary address, a note is logged, and the lead is tagged
+# 'email-updated-auto' for agent review.
+# Default: true (safe to leave on — only acts on very clear, explicit messages)
+email_address_update_scan_enabled: true
+
 # Pond nurture SMS — FUB native SMS sent alongside the daily pond nurture emails
 # Uses the same FUB /textMessages API as the Lifestyle Bot (NOT Twilio)
 # Deduplication: leads already texted by Lifestyle Bot today are skipped
