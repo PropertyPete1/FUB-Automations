@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Bot, Zap, RefreshCw, TrendingUp, MessageSquare, Users, Clock, ChevronDown, ChevronUp, CheckCircle, AlertCircle, Mail, Phone, Calendar, Activity, Search, ShieldCheck, TriangleAlert, Wrench, Eye, Radio } from "lucide-react";
+import { Bot, Zap, RefreshCw, TrendingUp, MessageSquare, Users, Clock, ChevronDown, ChevronUp, CheckCircle, AlertCircle, Mail, Activity, Search, ShieldCheck, TriangleAlert, Wrench, Eye, Radio } from "lucide-react";
 
 // ── Colour map per agent ────────────────────────────────────────────────────
 const AGENT_COLORS: Record<string, { bar: string; text: string; bg: string }> = {
@@ -84,7 +84,6 @@ function BotResultModal({ result, onClose }: { result: BotResult; onClose: () =>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl font-bold leading-none">×</button>
         </div>
 
-        {/* Summary stats */}
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-emerald-950/20 border border-emerald-500/20 rounded-xl p-3 text-center">
             <div className="text-2xl font-bold text-emerald-400">{result.leadsProcessed}</div>
@@ -107,7 +106,6 @@ function BotResultModal({ result, onClose }: { result: BotResult; onClose: () =>
           </span>
         </div>
 
-        {/* Lead results */}
         {result.results.length > 0 && (
           <div className="space-y-2">
             <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Leads Processed</h4>
@@ -189,7 +187,6 @@ export default function LifestyleBotPanel() {
 
   const lastMonitorRun = monitorHistory && monitorHistory.length > 0 ? monitorHistory[0] : null;
 
-  // ── Bot Observer Network feed ──────────────────────────────────────────────
   const { data: observations, refetch: refetchObs } = trpc.bot.getObservations.useQuery(
     { limit: 60, hoursBack: 25 },
     { staleTime: 5 * 60 * 1000, refetchInterval: 5 * 60 * 1000 }
@@ -200,7 +197,7 @@ export default function LifestyleBotPanel() {
     onError: (err) => toast.error("Could not mark fixed", { description: err.message }),
   });
 
-  // ── Auto-Pond Promotion ──────────────────────────────────────────────────────
+  // Auto-Pond Promotion
   const [showPondHistory, setShowPondHistory] = useState(false);
   const [pondResult, setPondResult] = useState<null | { promoted: number; skipped: number; errors: number; durationMs: number; summary: string }>(null);
 
@@ -243,16 +240,13 @@ export default function LifestyleBotPanel() {
     },
   });
 
-  const BOT_MAX_PER_RUN = 15; // hard cap in lifestyleBot.ts — not a daily goal
+  // No hardcoded cap — Pond Nurture uses dynamic scaling (eligible ÷ 14).
   const lastRun = runHistory && runHistory.length > 0 ? runHistory[0] : null;
 
-  // Compute bot-only text stats from run history
   const botTextToday = data?.agents.find(a => a.isBot)?.todayCount ?? 0;
   const botTextWeek = data?.agents.find(a => a.isBot)?.weekCount ?? 0;
   const allTimeTexted = (runHistory as RunRecord[] | undefined)?.reduce((s, r) => s + r.leadsTexted, 0) ?? 0;
-  const allTimeRuns = (runHistory as RunRecord[] | undefined)?.length ?? 0;
 
-  // Live pond nurture stats from SQLite (30s TTL)
   const pondEmailToday = dashStats?.live_stats?.pond_nurture_today ?? null;
   const pondEmailAllTime = dashStats?.live_stats?.pond_nurture_sent ?? null;
 
@@ -264,19 +258,15 @@ export default function LifestyleBotPanel() {
         <CardHeader className="pb-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              {/* Bot icon */}
               <div className="p-2.5 bg-gradient-to-br from-purple-600 to-purple-800 rounded-xl shadow-sm">
                 <Bot className="h-5 w-5 text-white" />
               </div>
               <div>
-                <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
+                <CardTitle className="text-base font-semibold text-foreground">
                   Lifestyle Bot Command Center
-                  <Badge className="bg-purple-500/15 text-purple-400 border-purple-500/20 text-[10px] font-semibold">
-                    8th Agent
-                  </Badge>
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Daily activity for all agents + the Lifestyle Bot · Bot max: {BOT_MAX_PER_RUN}/run
+                  Daily activity across all agents + Pond Nurture bot · Dynamic scaling
                 </CardDescription>
               </div>
             </div>
@@ -334,8 +324,8 @@ export default function LifestyleBotPanel() {
                     )}
                   </p>
                   <p className="text-[10px] text-muted-foreground mt-0.5">
-                    {new Date(lastRun.runAt).toLocaleString()} · {lastRun.triggeredBy === "manual" ? "Manual trigger" : "Scheduled"}
-                    {lastRun.emailSent === "yes" && " · Email sent ✓"}
+                    {new Date(lastRun.runAt).toLocaleString()} · {lastRun.triggeredBy === "manual" ? "Manual" : "Scheduled"}
+                    {lastRun.emailSent === "yes" && " · Email ✓"}
                   </p>
                 </div>
               </div>
@@ -387,28 +377,31 @@ export default function LifestyleBotPanel() {
             </div>
           )}
 
-          {/* Summary row */}
+          {/* ── Summary Stats Row ──────────────────────────────────────── */}
           {data && (
-            <div className="grid grid-cols-3 gap-3 p-4 bg-card/4 rounded-xl border border-white/8">
+            <div className="grid grid-cols-4 gap-3 p-4 bg-card/4 rounded-xl border border-white/8">
               <div className="text-center">
                 <div className="text-2xl font-bold text-foreground">{data.totalToday}</div>
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">Total Today</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">Today</div>
               </div>
               <div className="text-center border-x border-white/8">
                 <div className="text-2xl font-bold text-foreground">{data.totalWeek}</div>
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">This Week</div>
               </div>
+              <div className="text-center border-r border-white/8">
+                <div className="text-2xl font-bold text-purple-400">{botTextToday}</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">Bot Today</div>
+              </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-foreground">
-                  {data.agents.filter(a => a.isBot ? a.todayCount >= BOT_MAX_PER_RUN : a.todayCount >= 10).length}
-                  <span className="text-sm font-normal text-muted-foreground">/{data.agents.length}</span>
+                <div className="text-2xl font-bold text-primary">
+                  {pondEmailToday !== null ? pondEmailToday : "—"}
                 </div>
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">Hit Goal</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">Pond Emails</div>
               </div>
             </div>
           )}
 
-          {/* Agent rows */}
+          {/* ── Agent Progress Rows ────────────────────────────────────── */}
           {isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 8 }).map((_, i) => (
@@ -416,8 +409,7 @@ export default function LifestyleBotPanel() {
               ))}
             </div>
           ) : data ? (
-            <div className="space-y-2.5">
-              {/* Sort: bot first, then by today count desc */}
+            <div className="space-y-2">
               {[...data.agents]
                 .sort((a, b) => {
                   if (a.isBot && !b.isBot) return -1;
@@ -426,7 +418,7 @@ export default function LifestyleBotPanel() {
                 })
                 .map((agent) => {
                   const colors = AGENT_COLORS[agent.name] ?? { bar: "bg-stone-400", text: "text-muted-foreground", bg: "bg-card/4 border-white/8" };
-                  const agentGoal = agent.isBot ? BOT_MAX_PER_RUN : 10;
+                   const agentGoal = agent.goal || 10;
                   const pct = Math.min(100, Math.round((agent.todayCount / agentGoal) * 100));
                   const hitGoal = agent.todayCount >= agentGoal;
                   const initials = agent.isBot ? "🤖" : agent.name.slice(0, 2).toUpperCase();
@@ -434,15 +426,12 @@ export default function LifestyleBotPanel() {
                   return (
                     <div
                       key={agent.name}
-                      className={`rounded-xl border p-3.5 transition-all duration-200 ${
-                        agent.isBot
-                          ? "bg-purple-500/8 border-purple-500/20"
-                          : colors.bg
+                      className={`rounded-xl border p-3 transition-all duration-200 ${
+                        agent.isBot ? "bg-purple-500/8 border-purple-500/20" : colors.bg
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        {/* Avatar */}
-                        <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
                           agent.isBot
                             ? "bg-gradient-to-br from-purple-600 to-purple-800 text-white"
                             : `bg-gradient-to-br ${
@@ -458,7 +447,6 @@ export default function LifestyleBotPanel() {
                           {initials}
                         </div>
 
-                        {/* Name + bar */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-1.5">
                             <div className="flex items-center gap-1.5">
@@ -471,27 +459,22 @@ export default function LifestyleBotPanel() {
                               )}
                             </div>
                             <div className="flex items-center gap-3 text-xs">
-                              <span className="text-white/40">
+                              <span className="text-muted-foreground">
                                 <MessageSquare className="h-3 w-3 inline mr-0.5" />
                                 <span className="font-semibold text-foreground">{agent.todayCount}</span>
-                                <span className="text-white/40"> today</span>
+                                <span className="text-muted-foreground"> today</span>
                               </span>
-                              <span className="text-white/40 hidden sm:inline">
+                              <span className="text-muted-foreground hidden sm:inline">
                                 <TrendingUp className="h-3 w-3 inline mr-0.5" />
-                                <span className="font-semibold text-white/60">{agent.weekCount}</span>
-                                <span className="text-white/40"> wk</span>
+                                <span className="font-semibold text-foreground">{agent.weekCount}</span>
+                                <span className="text-muted-foreground"> wk</span>
                               </span>
                             </div>
                           </div>
-                          {/* Progress bar */}
                           <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
                             <div
                               className={`h-full rounded-full transition-all duration-700 ${
-                                hitGoal
-                                  ? "bg-emerald-500"
-                                  : agent.isBot
-                                  ? "bg-purple-500"
-                                  : colors.bar
+                                hitGoal ? "bg-emerald-500" : agent.isBot ? "bg-purple-500" : colors.bar
                               }`}
                               style={{ width: `${pct}%` }}
                             />
@@ -503,89 +486,14 @@ export default function LifestyleBotPanel() {
                 })}
             </div>
           ) : (
-            <div className="text-center py-8 text-white/40 text-sm">
+            <div className="text-center py-8 text-muted-foreground text-sm">
               <Users className="h-8 w-8 mx-auto mb-2 stroke-1" />
               <p>Could not load bot status. Check server connection.</p>
             </div>
           )}
 
-          {/* ── Bot Activity Stats ─────────────────────────────────────── */}
-          <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-4 space-y-3">
-            <div className="flex items-center gap-2 mb-1">
-              <Activity className="h-3.5 w-3.5 text-purple-400" />
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-purple-400">Bot Activity Overview</span>
-            </div>
-
-            {/* Two-channel grid */}
-            <div className="grid grid-cols-2 gap-3">
-              {/* FUB Notes channel */}
-              <div className="bg-card/60 rounded-lg border border-white/10 p-3 space-y-1.5">
-                <div className="flex items-center gap-1.5">
-                  <Phone className="h-3.5 w-3.5 text-purple-400" />
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-white/40">AI Notes (FUB)</span>
-                </div>
-                <div className="flex items-end gap-1">
-                  <span className="text-2xl font-bold text-foreground">{botTextToday}</span>
-                  <span className="text-xs text-white/40 mb-0.5">today</span>
-                </div>
-                <div className="text-[10px] text-white/40">
-                  <span className="font-semibold text-foreground">{botTextWeek}</span> this week
-                  {allTimeTexted > 0 && <> · <span className="font-semibold text-foreground">{allTimeTexted}</span> all-time</>}
-                  {allTimeRuns > 0 && <div className="text-[10px] text-white/30 mt-0.5">{allTimeRuns} total runs · FUB note posted per lead</div>}
-                </div>
-                <div className="flex items-center gap-1 mt-1">
-                  <Calendar className="h-3 w-3 text-white/30" />
-                  <span className="text-[10px] text-white/30">Daily 10am CT (incl. weekends) · Max {BOT_MAX_PER_RUN}/run</span>
-                </div>
-              </div>
-
-              {/* Pond Emails channel */}
-              <div className="bg-card/60 rounded-lg border border-white/10 p-3 space-y-1.5">
-                <div className="flex items-center gap-1.5">
-                  <Mail className="h-3.5 w-3.5 text-purple-400" />
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-white/40">Pond Emails</span>
-                </div>
-                <div className="flex items-end gap-1">
-                  <span className="text-2xl font-bold text-foreground">
-                    {pondEmailToday !== null ? pondEmailToday : "—"}
-                  </span>
-                  <span className="text-xs text-white/40 mb-0.5">today</span>
-                </div>
-                <div className="text-[10px] text-white/40">
-                  {pondEmailAllTime !== null
-                    ? <><span className="font-semibold text-foreground">{pondEmailAllTime.toLocaleString()}</span> all-time sent</>
-                    : <span className="text-white/30">Loading…</span>
-                  }
-                  {" · "}<span className="font-semibold text-foreground">14-day</span> cadence
-                </div>
-                <div className="flex items-center gap-1 mt-1">
-                  <Calendar className="h-3 w-3 text-white/30" />
-                  <span className="text-[10px] text-white/30">Daily 8am CT · cap 100/day</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Cron schedule summary */}
-            <div className="grid grid-cols-2 gap-2 text-[10px]">
-
-              <div className="flex items-center gap-1.5 text-muted-foreground">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
-                Email cron: daily 8am CT
-              </div>
-              <div className="flex items-center gap-1.5 text-muted-foreground">
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />
-                Reads live FUB notes before drafting
-              </div>
-              <div className="flex items-center gap-1.5 text-muted-foreground">
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />
-                Posts FUB note after every email
-              </div>
-            </div>
-          </div>
-
-          {/* ── System Monitor Section ────────────────────────────────────────────────────────────────── */}
-          <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-3 space-y-3">
-            {/* Header row */}
+          {/* ── System Monitor (collapsible) ─────────────────────────────── */}
+          <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-3 space-y-2">
             <div className="flex items-center justify-between">
               <button
                 onClick={() => setShowMonitor(v => !v)}
@@ -607,8 +515,8 @@ export default function LifestyleBotPanel() {
                   </span>
                 )}
                 {showMonitor
-                  ? <ChevronUp className="h-3 w-3 text-indigo-400 group-hover:text-indigo-300 transition-colors" />
-                  : <ChevronDown className="h-3 w-3 text-indigo-400 group-hover:text-indigo-300 transition-colors" />}
+                  ? <ChevronUp className="h-3 w-3 text-indigo-400" />
+                  : <ChevronDown className="h-3 w-3 text-indigo-400" />}
               </button>
               <Button
                 size="sm"
@@ -624,37 +532,16 @@ export default function LifestyleBotPanel() {
               </Button>
             </div>
 
-            {/* Last run summary row (always visible) */}
             {lastMonitorRun && (
-              <div className="flex items-center gap-3 text-[10px] text-white/40">
-                <div className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  <span>Last: {formatRelativeTime(lastMonitorRun.runAt)}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <ShieldCheck className="h-3 w-3 text-indigo-400" />
-                  <span>{lastMonitorRun.checksRun} checks</span>
-                </div>
-                {lastMonitorRun.issuesFixed > 0 && (
-                  <div className="flex items-center gap-1 text-blue-600">
-                    <Wrench className="h-3 w-3" />
-                    <span>{lastMonitorRun.issuesFixed} auto-fixed</span>
-                  </div>
-                )}
-                <div className="flex items-center gap-1 text-slate-500">
-                  <span>{lastMonitorRun.durationMs}ms</span>
-                </div>
+              <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {formatRelativeTime(lastMonitorRun.runAt)}</span>
+                <span className="flex items-center gap-1"><ShieldCheck className="h-3 w-3 text-indigo-400" /> {lastMonitorRun.checksRun} checks</span>
+                {lastMonitorRun.issuesFixed > 0 && <span className="flex items-center gap-1 text-blue-400"><Wrench className="h-3 w-3" /> {lastMonitorRun.issuesFixed} auto-fixed</span>}
               </div>
             )}
 
-            {!lastMonitorRun && !runMonitorMutation.isPending && (
-              <p className="text-[10px] text-white/30 italic">No monitor runs yet — runs automatically every 30 min via cron, or click Run Now</p>
-            )}
-
-            {/* Expanded findings list */}
             {showMonitor && (
               <div className="space-y-1.5">
-                {/* Show live result if just ran, otherwise show last DB record */}
                 {(monitorResult?.findings ?? lastMonitorRun?.findings ?? []).map((f: { check: string; status: string; detail: string }, i: number) => (
                   <div
                     key={i}
@@ -678,46 +565,23 @@ export default function LifestyleBotPanel() {
                         : f.status === "warning" ? "text-amber-400"
                         : "text-red-400"
                       }`}>{f.check}</span>
-                      <span className="text-white/30 ml-1">— {f.detail}</span>
+                      <span className="text-muted-foreground ml-1">— {f.detail}</span>
                     </div>
                   </div>
                 ))}
-
-                {/* Run history list */}
-                {monitorHistory && monitorHistory.length > 1 && (
-                  <div className="pt-2 border-t border-white/10">
-                    <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-1.5">Previous Runs</p>
-                    {monitorHistory.slice(1).map((run, i) => (
-                      <div key={i} className="flex items-center justify-between text-[10px] text-white/40 py-0.5">
-                        <span>{formatRelativeTime(run.runAt)}</span>
-                        <span className={run.issuesFound === 0 ? "text-emerald-400" : "text-amber-400"}>
-                          {run.issuesFound === 0 ? "✓ All clear" : `${run.issuesFound} issue${run.issuesFound > 1 ? "s" : ""}`}
-                        </span>
-                        <span className="text-white/30">{run.checksRun} checks · {run.durationMs}ms</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             )}
-
-            {/* Schedule note */}
-            <div className="flex items-center gap-1.5 text-[10px] text-white/30">
-              <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 flex-shrink-0" />
-              Auto-scans every 30 min · 14 checks across FUB data, bot health, rule violations &amp; system files
-            </div>
           </div>
 
-          {/* ── Bot Observer Network Feed ────────────────────────────────────── */}
-          <div className="mt-3 rounded-xl border border-violet-500/20 bg-violet-500/5 p-3 space-y-2">
-            {/* Header row */}
+          {/* ── Bot Observer Network (collapsible) ───────────────────────── */}
+          <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-3 space-y-2">
             <div className="flex items-center justify-between">
               <button
                 className="group flex items-center gap-2 text-[11px] font-semibold text-violet-400 hover:text-violet-300 transition-colors"
                 onClick={() => setShowObsFeed(v => !v)}
               >
                 <Radio className="h-3.5 w-3.5 text-violet-400" />
-                Bot Observer Network
+                Observer Network
                 {obsErrors.length > 0 && (
                   <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-red-500/15 text-red-400">
                     {obsErrors.length} error{obsErrors.length > 1 ? "s" : ""}
@@ -733,9 +597,7 @@ export default function LifestyleBotPanel() {
                     ✓ All clear
                   </span>
                 )}
-                {showObsFeed
-                  ? <ChevronUp className="h-3 w-3 text-violet-400" />
-                  : <ChevronDown className="h-3 w-3 text-violet-400" />}
+                {showObsFeed ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
               </button>
               <Button
                 size="sm"
@@ -748,23 +610,17 @@ export default function LifestyleBotPanel() {
               </Button>
             </div>
 
-            {/* Summary row (always visible) */}
-            <div className="flex items-center gap-3 text-[10px] text-white/40">
-              <div className="flex items-center gap-1">
-                <Eye className="h-3 w-3" />
-                <span>{obsTotal} observation{obsTotal !== 1 ? "s" : ""} (last 25h)</span>
-              </div>
-              {obsErrors.length > 0 && <span className="text-red-600 font-semibold">{obsErrors.length} error{obsErrors.length > 1 ? "s" : ""}</span>}
-              {obsWarnings.length > 0 && <span className="text-amber-600">{obsWarnings.length} warning{obsWarnings.length > 1 ? "s" : ""}</span>}
-              {obsFixed.length > 0 && <span className="text-blue-600">{obsFixed.length} fixed</span>}
-              {obsInfo.length > 0 && <span className="text-slate-500">{obsInfo.length} info</span>}
+            <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+              <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> {obsTotal} observations (last 25h)</span>
+              {obsErrors.length > 0 && <span className="text-red-400 font-semibold">{obsErrors.length} error{obsErrors.length > 1 ? "s" : ""}</span>}
+              {obsWarnings.length > 0 && <span className="text-amber-400">{obsWarnings.length} warning{obsWarnings.length > 1 ? "s" : ""}</span>}
+              {obsFixed.length > 0 && <span className="text-blue-400">{obsFixed.length} fixed</span>}
             </div>
 
-            {/* Expanded feed */}
             {showObsFeed && (
               <div className="space-y-1 max-h-72 overflow-y-auto pr-1">
                 {(observations ?? []).length === 0 && (
-                  <p className="text-[10px] text-slate-500 italic text-center py-2">No observations yet — bots are running silently</p>
+                  <p className="text-[10px] text-muted-foreground italic text-center py-2">No observations yet — bots are running silently</p>
                 )}
                 {(observations ?? []).map((obs) => (
                   <div
@@ -784,22 +640,22 @@ export default function LifestyleBotPanel() {
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-semibold text-slate-300 uppercase tracking-wider text-[9px]">{obs.source}</span>
+                        <span className="font-semibold text-muted-foreground uppercase tracking-wider text-[9px]">{obs.source}</span>
                         <span className={`font-medium ${
                           obs.severity === "error" ? "text-red-400"
                           : obs.severity === "warning" ? "text-amber-400"
                           : obs.severity === "fixed" ? "text-blue-400"
-                          : "text-white/50"
+                          : "text-muted-foreground"
                         }`}>{obs.message}</span>
                       </div>
                       {obs.detail && (
-                        <p className="text-white/30 mt-0.5 leading-relaxed">{obs.detail}</p>
+                        <p className="text-muted-foreground mt-0.5 leading-relaxed">{obs.detail}</p>
                       )}
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-white/30">{formatRelativeTime(obs.createdAt)}</span>
+                        <span className="text-muted-foreground">{formatRelativeTime(obs.createdAt)}</span>
                         {(obs.severity === "error" || obs.severity === "warning") && (
                           <button
-                            className="text-[9px] text-blue-500 hover:text-blue-700 underline"
+                            className="text-[9px] text-blue-400 hover:text-blue-300 underline"
                             onClick={() => markObsFixedMutation.mutate({ id: obs.id })}
                             disabled={markObsFixedMutation.isPending}
                           >
@@ -812,17 +668,10 @@ export default function LifestyleBotPanel() {
                 ))}
               </div>
             )}
-
-            {/* Source legend */}
-            <div className="flex items-center gap-1.5 text-[10px] text-white/30 flex-wrap">
-              <div className="w-1.5 h-1.5 rounded-full bg-violet-400 flex-shrink-0" />
-              Sources: bot_monitor · lifestyle_bot · speed_to_lead · pond_nurture · nightly_healer
-            </div>
           </div>
 
-          {/* ── Auto-Pond Promotion Section ────────────────────────────────────────────────────── */}
-          <div className="rounded-xl border border-teal-500/20 bg-teal-500/5 p-3 space-y-3">
-            {/* Header row */}
+          {/* ── Auto-Pond Promotion (collapsible) ────────────────────────── */}
+          <div className="rounded-xl border border-teal-500/20 bg-teal-500/5 p-3 space-y-2">
             <div className="flex items-center justify-between">
               <button
                 onClick={() => setShowPondHistory(v => !v)}
@@ -834,16 +683,12 @@ export default function LifestyleBotPanel() {
                 </span>
                 {lastPondRun && (
                   <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
-                    lastPondRun.errors > 0
-                      ? "bg-amber-500/15 text-amber-400"
-                      : "bg-teal-500/15 text-teal-400"
+                    lastPondRun.errors > 0 ? "bg-amber-500/15 text-amber-400" : "bg-teal-500/15 text-teal-400"
                   }`}>
                     {lastPondRun.promoted} moved
                   </span>
                 )}
-                {showPondHistory
-                  ? <ChevronUp className="h-3 w-3 text-teal-400 group-hover:text-teal-300 transition-colors" />
-                  : <ChevronDown className="h-3 w-3 text-teal-400 group-hover:text-teal-300 transition-colors" />}
+                {showPondHistory ? <ChevronUp className="h-3 w-3 text-teal-400" /> : <ChevronDown className="h-3 w-3 text-teal-400" />}
               </button>
               <Button
                 size="sm"
@@ -859,71 +704,36 @@ export default function LifestyleBotPanel() {
               </Button>
             </div>
 
-            {/* Last run summary (always visible) */}
             {lastPondRun && (
-              <div className="flex items-center gap-3 text-[10px] text-white/40">
-                <div className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  <span>Last: {formatRelativeTime(lastPondRun.ranAt)}</span>
-                </div>
-                <div className="flex items-center gap-1 text-teal-400">
-                  <Users className="h-3 w-3" />
-                  <span>{lastPondRun.promoted} promoted</span>
-                </div>
-                {lastPondRun.skipped > 0 && (
-                  <div className="flex items-center gap-1">
-                    <span>{lastPondRun.skipped} skipped</span>
-                  </div>
-                )}
-                {lastPondRun.errors > 0 && (
-                  <div className="flex items-center gap-1 text-amber-600">
-                    <AlertCircle className="h-3 w-3" />
-                    <span>{lastPondRun.errors} errors</span>
-                  </div>
-                )}
-                <div className="flex items-center gap-1 text-slate-500">
-                  <span>{lastPondRun.durationMs}ms</span>
-                </div>
+              <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {formatRelativeTime(lastPondRun.ranAt)}</span>
+                <span className="flex items-center gap-1 text-teal-400"><Users className="h-3 w-3" /> {lastPondRun.promoted} promoted</span>
+                {lastPondRun.skipped > 0 && <span>{lastPondRun.skipped} skipped</span>}
+                {lastPondRun.errors > 0 && <span className="text-amber-400">{lastPondRun.errors} errors</span>}
               </div>
             )}
 
-            {/* Live result after manual run */}
             {pondResult && !runAutoPondMutation.isPending && (
               <div className="rounded-lg bg-teal-500/10 border border-teal-500/25 px-3 py-2 text-[10px] text-teal-300">
-                <span className="font-semibold">Last run: </span>{pondResult.summary}
+                <span className="font-semibold">Result: </span>{pondResult.summary}
               </div>
             )}
 
-            {!lastPondRun && !runAutoPondMutation.isPending && (
-              <p className="text-[10px] text-white/30 italic">No runs yet — runs automatically nightly at 2am CT, or click Run Now to promote stale leads now</p>
-            )}
-
-            {/* Expanded history */}
             {showPondHistory && pondHistory && pondHistory.length > 0 && (
               <div className="space-y-1.5">
                 {pondHistory.map((run) => (
-                  <div key={run.id} className="flex items-center gap-2 text-[10px] text-white/40 bg-card rounded-lg px-2.5 py-1.5 border border-teal-500/15">
-                    <span className="text-white/30">{formatRelativeTime(run.ranAt)}</span>
+                  <div key={run.id} className="flex items-center gap-2 text-[10px] text-muted-foreground bg-card rounded-lg px-2.5 py-1.5 border border-teal-500/15">
+                    <span>{formatRelativeTime(run.ranAt)}</span>
                     <span className="text-teal-400 font-semibold">{run.promoted} promoted</span>
-                    <span className="text-white/30">{run.skipped} skipped</span>
+                    <span>{run.skipped} skipped</span>
                     {run.errors > 0 && <span className="text-amber-400">{run.errors} errors</span>}
-                    <span className="text-white/30 ml-auto">{run.triggeredBy}</span>
+                    <span className="ml-auto">{run.triggeredBy}</span>
                   </div>
                 ))}
               </div>
             )}
-
-            {/* Rule explanation */}
-            <div className="flex items-center gap-1.5 text-[10px] text-white/30 flex-wrap">
-              <div className="w-1.5 h-1.5 rounded-full bg-teal-400 flex-shrink-0" />
-              Moves leads created 20+ days ago from agents to the pond · Runs nightly at 2am CT · Skips Active Client, Pending, Closed, Sphere
-            </div>
           </div>
 
-          {/* Footer note */}
-          <p className="text-[11px] text-white/30 text-center pt-1">
-Lifestyle Bot runs daily at 10am CT (incl. weekends) · Emails pond leads 20+ days stale · Max 15/run · Posts FUB note after every send
-          </p>
         </CardContent>
       </Card>
     </>

@@ -1,11 +1,11 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "9de66a40-907a-4bc5-89da-096e3ff60802",
-  "prevId": "beb55621-a31f-4fff-b6c5-07d1d4bbcde1",
+  "id": "3fa9503e-9722-4fe1-82e6-7e9deacee080",
+  "prevId": "f72bca37-559a-4781-b515-c116228b6c0c",
   "tables": {
-    "bot_observations": {
-      "name": "bot_observations",
+    "copilot_feedback": {
+      "name": "copilot_feedback",
       "columns": {
         "id": {
           "name": "id",
@@ -14,60 +14,51 @@
           "notNull": true,
           "autoincrement": true
         },
-        "source": {
-          "name": "source",
-          "type": "varchar(64)",
+        "agent_name": {
+          "name": "agent_name",
+          "type": "varchar(100)",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "severity": {
-          "name": "severity",
-          "type": "varchar(16)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'info'"
-        },
-        "category": {
-          "name": "category",
-          "type": "varchar(64)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'healer_run'"
-        },
-        "message": {
-          "name": "message",
+        "draft_text": {
+          "name": "draft_text",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "detail": {
-          "name": "detail",
-          "type": "text",
+        "lead_city": {
+          "name": "lead_city",
+          "type": "varchar(100)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
-        "autoFixable": {
-          "name": "autoFixable",
-          "type": "int",
+        "lead_stage": {
+          "name": "lead_stage",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "draft_type": {
+          "name": "draft_type",
+          "type": "varchar(20)",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": 0
+          "default": "'outbound'"
         },
-        "runId": {
-          "name": "runId",
-          "type": "varchar(64)",
+        "action": {
+          "name": "action",
+          "type": "enum('sent','ignored','regenerated','edited')",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         },
-        "createdAt": {
-          "name": "createdAt",
+        "created_at": {
+          "name": "created_at",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
@@ -78,8 +69,70 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {
-        "bot_observations_id": {
-          "name": "bot_observations_id",
+        "copilot_feedback_id": {
+          "name": "copilot_feedback_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "copilot_memories": {
+      "name": "copilot_memories",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "agent_name": {
+          "name": "agent_name",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "memory_text": {
+          "name": "memory_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "category": {
+          "name": "category",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'general'"
+        },
+        "importance_score": {
+          "name": "importance_score",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "copilot_memories_id": {
+          "name": "copilot_memories_id",
           "columns": [
             "id"
           ]

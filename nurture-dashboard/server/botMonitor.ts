@@ -328,19 +328,20 @@ async function checkCloudComputerHealth(): Promise<MonitorFinding> {
   return { check: "Pond nurture heartbeat", status: "ok", detail: `Pond nurture last ran ${ageHours.toFixed(1)}h ago — healthy` };
 }
 
-/** CHECK 12: Duplicate pond emails today (native MySQL pondNurtureLog — unique constraint prevents this, but verify) */
+/** CHECK 12: Pond email volume sanity check (native MySQL pondNurtureLog) */
 async function checkDuplicateTextsToday(): Promise<MonitorFinding> {
   // The pondNurtureLog table has a UNIQUE constraint on person_id (one row per lead).
   // Duplicates are structurally impossible via upsertNurtureLog, but we verify the count is sane.
+  // Dynamic cap: system scales as lead count grows (eligible ÷ 14). No fixed ceiling.
+  // We flag only if the count exceeds 1000 (would imply ~14,000 leads — sanity check for bugs).
   const cnt = await getPondNurtureCountToday();
   if (cnt === null) {
-    return { check: "Duplicate pond emails today", status: "ok", detail: "DB not accessible — skipped" };
+    return { check: "Pond email volume today", status: "ok", detail: "DB not accessible — skipped" };
   }
-  // If more than 200 emails sent today, flag as unusual (daily cap is 100)
-  if (cnt > 200) {
-    return { check: "Duplicate pond emails today", status: "warning", detail: `${cnt} pond nurture entries today — exceeds expected daily cap of 100` };
+  if (cnt > 1000) {
+    return { check: "Pond email volume today", status: "warning", detail: `${cnt} pond nurture entries today — unusually high, verify lead pool size` };
   }
-  return { check: "Duplicate pond emails today", status: "ok", detail: `${cnt} pond nurture emails today — within expected range` };
+  return { check: "Pond email volume today", status: "ok", detail: `${cnt} pond nurture emails today — within expected range (dynamic cap)` };
 }
 
 /** CHECK 13: Pond nurture bot_observations error count today */

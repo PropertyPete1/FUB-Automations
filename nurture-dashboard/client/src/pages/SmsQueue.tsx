@@ -639,13 +639,8 @@ export default function SmsQueue() {
               <MessageSquare className="h-4 w-4 text-white" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-sm font-bold text-foreground tracking-tight">Power Queue</h1>
-                <Badge className="bg-emerald-100 text-emerald-600 border-none text-[10px] px-2 py-0.5 font-mono">
-                  ⚡ High Speed Mode
-                </Badge>
-              </div>
-              <p className="text-[10px] text-slate-400 tracking-wide">Lifestyle Design Realty · Tap-to-Text Outbox</p>
+              <h1 className="text-sm font-bold text-foreground tracking-tight">Power Queue</h1>
+              <p className="text-[10px] text-slate-400 tracking-wide">Tap-to-Text Outbox</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -728,7 +723,6 @@ export default function SmsQueue() {
                 <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
                 <span className="text-[10px] text-amber-500 font-mono tracking-wider uppercase">Live Queue</span>
               </div>
-              <p className="text-[10px] text-slate-400 tracking-[0.2em] uppercase">Powered by Lifestyle Technologies</p>
             </div>
           </div>
           <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-amber-500/20 to-transparent" />

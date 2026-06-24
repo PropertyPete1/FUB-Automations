@@ -1,9 +1,11 @@
 import { cn } from "@/lib/utils";
 import { AlertTriangle, RotateCcw } from "lucide-react";
-import { Component, ReactNode } from "react";
+import { Component, ErrorInfo, ReactNode } from "react";
 
 interface Props {
   children: ReactNode;
+  /** Optional actor name (owner or agent slug) injected from auth context */
+  actor?: string;
 }
 
 interface State {
@@ -19,6 +21,27 @@ class ErrorBoundary extends Component<Props, State> {
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    // Fire-and-forget: persist crash to ui_error_log for the nightly healer
+    const body = JSON.stringify({
+      "0": {
+        json: {
+          actor: this.props.actor ?? "unknown",
+          action: "ui_crash:render",
+          errorMessage: (error?.message ?? "Unknown render error").slice(0, 500),
+          errorDetail: (info.componentStack ?? "").slice(0, 2000),
+          category: "ui_crash",
+        },
+      },
+    });
+    fetch("/api/trpc/errors.logClientError", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body,
+    }).catch(() => {});
   }
 
   render() {

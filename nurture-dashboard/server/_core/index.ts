@@ -516,7 +516,7 @@ async function startServer() {
 
   // Pond Nurture — daily AI-personalized emails to ALL pond leads from peter@lifestyledesignrealty.com
   // Runs daily at 8am CT (13:00 UTC) via heartbeat cron
-  // Native TypeScript pond nurture engine — 14-day cadence, 100 emails/run, AI-personalized, live FUB notes
+  // Native TypeScript pond nurture engine — 14-day cadence, dynamic daily cap (eligible ÷ 14), AI-personalized, live FUB notes
   app.post("/api/scheduled/pond-nurture", async (req, res) => {
     try {
       const user = await sdk.authenticateRequest(req);

@@ -12,7 +12,7 @@
  *   5. Return a structured summary for the heartbeat response
  */
 
-import { getUnresolvedErrors, markErrorsResolved, markErrorsUnfixable, pruneOldErrorLogs, getUnfixedObservations, markObservationFixed, pruneOldObservations, writeObservation, getDb } from "./db";
+import { getUnresolvedErrors, markErrorsResolved, markErrorsUnfixable, pruneOldErrorLogs, getUnfixedObservations, markObservationFixed, pruneOldObservations, writeObservation, getDb, pruneOldBotRunLogs, pruneOldBotMonitorLogs, pruneOldPondNurtureLogs, pruneOldPondPromotionLogs, pruneOldReplyIntentProcessed, pruneOldCopilotFeedback } from "./db";
 import { clearRosterCache } from "./dashboardData";
 import { getSuppressionCount, getSuppressionList } from "./compliance";
 import { invokeLLM } from "./_core/llm";
@@ -559,10 +559,10 @@ export async function runNightlyHealer(): Promise<HealerResult> {
     console.warn("[nightlyHealer] Could not read bot observations:", e);
   }
 
-  // ── Stage 0.5: Check if lifestyle bots ran yesterday ──────────────────────
-  // The healer runs at 4am CT. Bots run at 10am CT. So we check if each bot
-  // ran during the PREVIOUS calendar day (CT timezone). If a bot missed its
-  // run, we write a warning observation so the morning email flags it clearly.
+  // ── Stage 0.5: Check if the unified Lifestyle Bot ran yesterday ────────────
+  // The healer runs at 4am CT. The bot runs at 10am CT via heartbeat.
+  // We check the bot_run_log table (singular) for any run during the previous
+  // calendar day (CT timezone). If no run found, we flag a warning.
   try {
     const db = await getDb();
     if (db) {
@@ -574,57 +574,39 @@ export async function runNightlyHealer(): Promise<HealerResult> {
       const yesterdayCtStart = new Date(todayCtMidnight.getTime() - 86400000);
       const yesterdayCtEnd = todayCtMidnight;
 
-      // Query bot_run_logs (lifestyle-bot-dashboard table, shared DB)
-      // We use raw SQL to avoid importing the other app's schema
+      // Query bot_run_log (unified table for the Lifestyle Bot)
       const { sql } = await import("drizzle-orm");
       const rows = await db.execute(
-        sql`SELECT botSlug, MAX(ranAt) as lastRan, SUM(sent) as totalSent
-            FROM bot_run_logs
-            WHERE ranAt >= ${yesterdayCtStart} AND ranAt < ${yesterdayCtEnd}
-            GROUP BY botSlug`
+        sql`SELECT COUNT(*) as runCount, SUM(leads_texted) as totalProcessed
+            FROM bot_run_log
+            WHERE run_at >= ${yesterdayCtStart} AND run_at < ${yesterdayCtEnd}`
       ) as any;
-      const ranYesterday = new Set<string>();
-      const rowArr: Array<{ botSlug: string; lastRan: Date; totalSent: number }> =
-        Array.isArray(rows) ? rows[0] ?? [] : [];
-      for (const r of rowArr) ranYesterday.add(r.botSlug);
+      const rowArr = Array.isArray(rows) ? (rows[0] ?? []) : [];
+      const runCount = Number(rowArr[0]?.runCount ?? 0);
+      const totalProcessed = Number(rowArr[0]?.totalProcessed ?? 0);
 
-      // Expected bots (slugs from lifestyle-bot-dashboard)
-      const EXPECTED_BOTS: Array<{ slug: string; displayName: string }> = [
-        { slug: "sp500_peter",  displayName: "S&P500 Lifestyle Bot (Peter)" },
-        { slug: "sp500_steven", displayName: "S&P500 Lifestyle Bot (Steven)" },
-        { slug: "tiffany",      displayName: "Tiffany's Lifestyle Bot" },
-        { slug: "stefanie",     displayName: "Rue Lifestyle Bot" },
-        { slug: "abby",         displayName: "Abby's Lifestyle Bot" },
-        { slug: "irma",         displayName: "Irma's Lifestyle Bot" },
-        { slug: "laila",        displayName: "Laila's Lifestyle Bot" },
-      ];
-
-      const missedBots = EXPECTED_BOTS.filter(b => !ranYesterday.has(b.slug));
-      if (missedBots.length > 0) {
+      if (runCount === 0) {
         const dateStr = yesterdayCtStart.toLocaleDateString("en-US", { timeZone: "America/Chicago", weekday: "short", month: "short", day: "numeric" });
-        for (const bot of missedBots) {
-          await writeObservation({
-            source: "nightly_healer",
-            severity: "warning",
-            category: "bot_missed_run",
-            message: `${bot.displayName} did not run on ${dateStr}`,
-            detail: `Bot slug '${bot.slug}' has no entry in bot_run_logs for ${dateStr} (CT). ` +
-              `Check the heartbeat schedule for this bot and verify the lifestyle-bot-dashboard is running. ` +
-              `Dashboard: https://lifestyle-bot-phfprjui.manus.space`,
-            autoFixable: 0,
-            runId: `healer-missed-${Date.now()}`,
-          });
-          console.warn(`[nightlyHealer] Bot missed run: ${bot.displayName} (${bot.slug}) on ${dateStr}`);
-        }
+        await writeObservation({
+          source: "nightly_healer",
+          severity: "warning",
+          category: "bot_missed_run",
+          message: `Lifestyle Bot did not run on ${dateStr}`,
+          detail: `No entries found in bot_run_log for ${dateStr} (CT). ` +
+            `Check the heartbeat schedule and verify the system is healthy.`,
+          autoFixable: 0,
+          runId: `healer-missed-${Date.now()}`,
+        });
+        console.warn(`[nightlyHealer] Lifestyle Bot missed run on ${dateStr}`);
         fixSummary.push({
           category: "bot_missed_run",
-          count: missedBots.length,
-          fixApplied: `${missedBots.length} bot(s) did not run yesterday: ${missedBots.map(b => b.displayName).join(", ")}. Observations written — check heartbeat schedules.`,
+          count: 1,
+          fixApplied: `Lifestyle Bot did not run yesterday. Observation written — check heartbeat schedule.`,
           ids: [],
         });
         errorsUnfixable++;
       } else {
-        console.log("[nightlyHealer] All lifestyle bots ran yesterday ✓");
+        console.log(`[nightlyHealer] Lifestyle Bot ran ${runCount} time(s) yesterday, processed ${totalProcessed} leads ✓`);
       }
     }
   } catch (e) {
@@ -689,7 +671,7 @@ export async function runNightlyHealer(): Promise<HealerResult> {
     }
   }
 
-  // ── Stage 4: Prune old error logs + old observations ─────────────────────
+  // ── Stage 4: Prune old logs + observations (database hygiene) ──────────────
   try {
     prunedRows = await pruneOldErrorLogs();
     console.log(`[nightlyHealer] Pruned ${prunedRows} old error log rows`);
@@ -701,6 +683,21 @@ export async function runNightlyHealer(): Promise<HealerResult> {
     console.log(`[nightlyHealer] Pruned ${observationsPruned} old observation rows`);
   } catch (e) {
     console.warn("[nightlyHealer] Observation prune failed:", e);
+  }
+  // Additional table hygiene — prevents unbounded growth
+  try {
+    const botRuns = await pruneOldBotRunLogs();
+    const monitorLogs = await pruneOldBotMonitorLogs();
+    const pondEmails = await pruneOldPondNurtureLogs();
+    const pondPromos = await pruneOldPondPromotionLogs();
+    const replyIntents = await pruneOldReplyIntentProcessed();
+    const feedback = await pruneOldCopilotFeedback();
+    const totalHygiene = botRuns + monitorLogs + pondEmails + pondPromos + replyIntents + feedback;
+    if (totalHygiene > 0) {
+      console.log(`[nightlyHealer] Database hygiene: pruned ${totalHygiene} additional old rows (botRuns=${botRuns}, monitorLogs=${monitorLogs}, pondEmails=${pondEmails}, pondPromos=${pondPromos}, replyIntents=${replyIntents}, feedback=${feedback})`);
+    }
+  } catch (e) {
+    console.warn("[nightlyHealer] Additional table hygiene failed:", e);
   }
 
   const result: HealerResult = {

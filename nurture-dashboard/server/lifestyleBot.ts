@@ -58,7 +58,8 @@ export interface LifestyleBotResult {
 const FUB_BASE = "https://api.followupboss.com/v1";
 const BOT_AGENT_NAME = "Lifestyle Bot";
 const STALE_DAYS_THRESHOLD = 20;
-const MAX_LEADS_PER_RUN = 15; // cap to avoid FUB rate limits
+// MAX_LEADS_PER_RUN removed — Pond Nurture uses dynamic cap (eligible ÷ 14).
+// Clock-in preview now shows total eligible pond leads instead of a hardcoded cap.
 
 // ── FUB helpers ───────────────────────────────────────────────────────────────
 
@@ -257,7 +258,7 @@ async function getPondLeadsForBot(peterUserId: number, alreadySentToday: Set<num
     return true;
   });
 
-  return eligible.slice(0, MAX_LEADS_PER_RUN);
+  return eligible; // No hardcoded cap — dynamic scaling handled by Pond Nurture
 }
 
 // ── AI draft generation ───────────────────────────────────────────────────────
@@ -335,6 +336,43 @@ Rules:
 // ── Main bot runner ───────────────────────────────────────────────────────────
 
 export async function runLifestyleBot(triggeredBy: "cron" | "manual" = "cron"): Promise<LifestyleBotResult> {
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // DEPRECATED: The standalone Lifestyle Bot note-posting run is no longer needed.
+  // Pond Nurture (server/pondNurture.ts) now handles ALL pond lead emails + FUB notes
+  // on a 14-day cadence with dynamic scaling (eligible ÷ 14).
+  //
+  // This function is kept as a no-op so existing cron routes and manual triggers
+  // don't crash. Clock-in/clock-off emails remain fully functional as separate exports.
+  // ═══════════════════════════════════════════════════════════════════════════════
+  const startTime = Date.now();
+  const ranAt = new Date().toISOString();
+
+  console.log("[LifestyleBot] Run triggered but deprecated — Pond Nurture handles all notes now.");
+  await writeObservation({
+    source: "lifestyle_bot",
+    severity: "info",
+    category: "bot_run_start",
+    message: "Lifestyle Bot run skipped (deprecated — Pond Nurture handles notes)",
+    detail: `Triggered by: ${triggeredBy}. The standalone note-posting run is no longer needed.`,
+    autoFixable: 0,
+    runId: `lifestyle-bot-noop-${Date.now()}`,
+  });
+
+  return {
+    ranAt,
+    leadsProcessed: 0,
+    leadsSkipped: 0,
+    leadsErrored: 0,
+    results: [],
+    summaryEmailSent: false,
+    durationMs: Date.now() - startTime,
+  };
+}
+
+// ── DEPRECATED: Original runLifestyleBot implementation (kept for reference) ──
+// The code below is unreachable but preserved for historical context.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function _runLifestyleBotLegacy(triggeredBy: "cron" | "manual" = "cron"): Promise<LifestyleBotResult> {
   const startTime = Date.now();
   const ranAt = new Date().toISOString();
   const results: BotLeadResult[] = [];
@@ -1013,7 +1051,8 @@ export async function sendBotClockinEmail(): Promise<ClockinEmailResult> {
         return true;
       });
 
-      leadsQueued = Math.min(eligible.length, MAX_LEADS_PER_RUN);
+      // Dynamic: show all eligible leads (Pond Nurture handles the actual daily cap)
+      leadsQueued = eligible.length;
 
       // Build a preview of the first 5 leads (name + city + days stale)
       const preview = eligible.slice(0, 5);
