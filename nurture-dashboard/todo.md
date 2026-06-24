@@ -771,3 +771,9 @@
 - [x] Update routers.ts bot.getStatus DAILY_GOAL from 15 to dynamic (now AGENT_GOAL=10 uniform)
 - [x] Update LifestyleBotPanel UI to reflect deprecated standalone run
 - [x] System must auto-scale as lead count grows (no manual cap adjustments ever)
+
+## Bounce Handler — Keep Leads with Phone Numbers
+- [x] Bounce Handler: If email bounces + lead has phone → keep active, remove bad email, tag "bad-email", post FUB note (don't trash)
+- [x] Bounce Handler: If email bounces + NO phone → trash via compliance layer (no way to reach them)
+- [x] Power Queue: Add new "Pond Leads — SMS Only" section for Peter showing bounced-email pond leads that need texting
+- [x] Server: Add new tRPC procedure to fetch pond leads tagged "bad-email" with valid phone numbers

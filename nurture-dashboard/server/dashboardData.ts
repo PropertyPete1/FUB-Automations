@@ -1098,3 +1098,127 @@ export async function getAgentRoster(fubApiKey: string): Promise<AgentRosterEntr
   rosterCache = { data: roster, ts: Date.now() };
   return roster;
 }
+
+// ── Pond Leads — SMS Only ──────────────────────────────────────────────────
+// Returns pond leads tagged "bad-email" that have a valid phone number.
+// These are leads whose email bounced but still have a working phone —
+// they need SMS outreach via Peter's Power Queue.
+export interface PondSmsLead {
+  id: number;
+  name: string;
+  phone: string;
+  stage: string;
+  days_in_pond: number;
+  notes: string;
+  sms_body: string;
+  sms_link: string;
+}
+
+let pondSmsCache: { data: PondSmsLead[]; ts: number } | null = null;
+const POND_SMS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+export function clearPondSmsCache() { pondSmsCache = null; }
+
+export async function getPondSmsOnlyLeads(fubApiKey: string): Promise<PondSmsLead[]> {
+  if (!fubApiKey) return [];
+  if (pondSmsCache && Date.now() - pondSmsCache.ts < POND_SMS_CACHE_TTL_MS) {
+    return pondSmsCache.data;
+  }
+
+  // Fetch pond leads tagged "bad-email" from FUB
+  // These are leads that bounced but have a phone number
+  const PAGE_SIZE = 100;
+  const allPeople: any[] = [];
+  let offset = 0;
+
+  while (true) {
+    await new Promise(r => setTimeout(r, 400));
+    try {
+      const data = await fubGet(
+        `/people?limit=${PAGE_SIZE}&offset=${offset}&sort=-created&tag=${encodeURIComponent("bad-email")}`,
+        fubApiKey
+      );
+      const page = data.people || [];
+      if (page.length === 0) break;
+      allPeople.push(...page);
+      if (page.length < PAGE_SIZE || offset >= 1900) break;
+      offset += PAGE_SIZE;
+    } catch (e) {
+      console.warn(`[getPondSmsOnlyLeads] Fetch failed at offset=${offset}:`, e);
+      break;
+    }
+  }
+
+  // Filter: must have a valid phone, must not be in excluded stages
+  const EXCLUDED_SMS_STAGES = new Set(["trash", "closed", "pending", "under contract"]);
+  const eligible = allPeople.filter(person => {
+    const phones: any[] = person.phones || [];
+    const phoneVal = phones[0]?.value || phones[0]?.phone || null;
+    if (!phoneVal) return false;
+    const digits = (phoneVal as string).replace(/\D/g, "");
+    if (digits.length < 10) return false;
+    const stage = String(person.stage || "").toLowerCase();
+    if (EXCLUDED_SMS_STAGES.has(stage)) return false;
+    return true;
+  });
+
+  // Enrich with SMS body and notes
+  const enriched = await Promise.allSettled(
+    eligible.slice(0, 50).map(async (person) => { // Cap at 50 to avoid rate limits
+      const leadId = person.id;
+      const phones: any[] = person.phones || [];
+      const phoneVal: string = phones[0]?.value || phones[0]?.phone || "";
+      const rawFirst: string = person.firstName || "";
+      const rawLast: string = person.lastName || "";
+      const tc = (s: string) =>
+        s.toLowerCase().split(/\s+/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+      const firstName = rawFirst ? tc(rawFirst.trim().split(/\s+/)[0]) : "there";
+      const fullName = rawFirst && rawLast
+        ? `${tc(rawFirst)} ${tc(rawLast)}`.trim()
+        : tc(rawFirst || rawLast || "Unknown");
+
+      // Calculate days in pond (from created date)
+      let daysInPond = 30;
+      const createdStr = person.created || null;
+      if (createdStr) {
+        try {
+          daysInPond = Math.floor((Date.now() - new Date(createdStr).getTime()) / (1000 * 60 * 60 * 24));
+        } catch { /* ignore */ }
+      }
+
+      const smsBody = generatePersonalizedSms(firstName, "Texas", daysInPond, true, String(leadId));
+      const smsLink = makeSmsUri(phoneVal, smsBody, "Peter", String(leadId));
+
+      // Fetch notes
+      let leadNotes = "";
+      try {
+        const notesData = await fubGet(`/notes?personId=${leadId}&limit=3`, fubApiKey);
+        const notesArr: any[] = notesData.notes || [];
+        leadNotes = notesArr
+          .slice(0, 3)
+          .map((n: any) => (n.body || n.subject || "").trim().slice(0, 200))
+          .filter(Boolean)
+          .join(" | ");
+      } catch { /* ignore */ }
+
+      return {
+        id: leadId,
+        name: fullName,
+        phone: phoneVal,
+        stage: person.stage || "Lead",
+        days_in_pond: daysInPond,
+        notes: leadNotes,
+        sms_body: smsBody,
+        sms_link: smsLink,
+      } as PondSmsLead;
+    })
+  );
+
+  const results = enriched
+    .filter((r): r is PromiseFulfilledResult<PondSmsLead> => r.status === "fulfilled")
+    .map(r => r.value)
+    .sort((a, b) => b.days_in_pond - a.days_in_pond); // Most stale first
+
+  pondSmsCache = { data: results, ts: Date.now() };
+  return results;
+}

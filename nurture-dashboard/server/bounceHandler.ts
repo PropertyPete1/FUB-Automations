@@ -9,8 +9,9 @@
  *   2. Search for permanent delivery failure messages (mailer-daemon) from the last 48h
  *   3. For each bounced email address:
  *      a. Look up the lead in FUB by email
- *      b. Move lead to Trash in FUB via compliance layer (bad email = no more email outreach)
- *      c. If lead has a valid phone → also add "bad-email" tag and note for SMS-only follow-up context
+ *      b. If lead HAS a valid phone → keep lead active, remove bad email, add "bad-email" tag,
+ *         post FUB note. Lead stays in system for SMS outreach via Peter's Power Queue.
+ *      c. If lead has NO phone → move to Trash via compliance layer (no way to reach them)
  *   4. Write bot_observations for everything processed
  *   5. Return a summary
  */
@@ -352,24 +353,27 @@ export async function runBounceHandler(): Promise<BounceHandlerResult> {
         }
 
         result.leadsFound++;
-                const phone = extractValidPhone(lead);
-        // Always Trash on bounce — bad email = no more email outreach regardless of phone
-        await moveLeadToTrash(lead, email);
-        result.movedToTrash++;
+        const phone = extractValidPhone(lead);
+
         if (phone) {
+          // HAS PHONE → Keep lead active, remove bad email, tag for SMS-only outreach
+          await removeBadEmailAndTag(lead, email);
           result.emailRemovedPhoneKept++;
-          result.details.push(`TRASHED (has phone): ${lead.name} — ${email} (phone ${phone} on file)`);
-          console.log(`[bounceHandler] Trashed ${lead.name} (ID ${lead.id}) — bad email bounced (has phone ${phone})`);
+          result.details.push(`KEPT (SMS-only): ${lead.name} — ${email} removed, phone ${phone} on file`);
+          console.log(`[bounceHandler] Kept ${lead.name} (ID ${lead.id}) — bad email removed, phone ${phone} on file for SMS outreach`);
           await writeObservation({
             source: "bounce_handler",
-            severity: "warning",
+            severity: "info",
             category: "email_bounce",
-            message: `Lead moved to Trash — ${lead.name} (bad email, has phone)`,
-            detail: `Bad email: ${email}. Phone ${phone} on file. Moved to Trash stage.`,
+            message: `Bad email removed, lead kept for SMS — ${lead.name}`,
+            detail: `Bad email: ${email}. Phone ${phone} on file. Tagged "bad-email", lead stays active for Power Queue SMS outreach.`,
             autoFixable: 0,
             runId,
           });
         } else {
+          // NO PHONE → Trash (no way to reach this lead)
+          await moveLeadToTrash(lead, email);
+          result.movedToTrash++;
           result.details.push(`TRASHED (no phone): ${lead.name} — ${email}`);
           console.log(`[bounceHandler] Trashed ${lead.name} (ID ${lead.id}) — bad email, no phone`);
           await writeObservation({

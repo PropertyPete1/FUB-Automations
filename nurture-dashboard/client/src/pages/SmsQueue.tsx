@@ -9,7 +9,7 @@ import {
   Check, Send, Phone, User, MapPin, Clock,
   Search, Filter, CheckCircle2, Flame, Loader2, ChevronRight,
   SkipForward, Sparkles, RefreshCw, MessageSquare, Unlock, ArrowLeft,
-  Target, Share, X, Lock, UserX
+  Target, Share, X, Lock, UserX, AlertTriangle, Mail
 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -1230,6 +1230,123 @@ export default function SmsQueue() {
           })()
         )}
       </main>
+
+      {/* ── Pond Leads — SMS Only (Peter only) ── */}
+      {!lockedAgent && <PondSmsSection />}
+    </div>
+  );
+}
+
+// ─── Pond Leads — SMS Only Section ─────────────────────────────────────────────
+// Separate section for pond leads whose email bounced but have a phone.
+// Only visible to Peter (admin view, no ?agent= lock).
+function PondSmsSection() {
+  const { data: pondLeads, isLoading } = trpc.fub.getPondSmsLeads.useQuery(undefined, {
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+  const [expandedLead, setExpandedLead] = useState<number | null>(null);
+  const [sentPondLeads, setSentPondLeads] = useState<Record<number, boolean>>({});
+
+  if (isLoading) return null; // Don't show skeleton — section is supplementary
+  if (!pondLeads || pondLeads.length === 0) return null; // Nothing to show
+
+  const unsent = pondLeads.filter(l => !sentPondLeads[l.id]);
+  if (unsent.length === 0) return null;
+
+  const handleSendPondSms = (lead: typeof pondLeads[0]) => {
+    setSentPondLeads(prev => ({ ...prev, [lead.id]: true }));
+    const phone = lead.phone.replace(/\D/g, "");
+    const isApple = /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent);
+    const cleanPhone = phone.startsWith("+") || phone.length > 10 ? phone : (phone.length === 10 ? "+1" + phone : phone);
+    const smsLink = isApple
+      ? `sms:${cleanPhone}&body=${encodeURIComponent(lead.sms_body)}`
+      : `sms:${cleanPhone}?body=${encodeURIComponent(lead.sms_body)}`;
+    window.location.href = smsLink;
+    toast.success(`SMS opened for ${lead.name.split(" ")[0]}`, { duration: 2000 });
+  };
+
+  return (
+    <div className="container max-w-2xl px-4 pb-8 pt-2">
+      <Card className="bg-card border border-amber-500/20 shadow-sm">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center shadow-sm">
+              <AlertTriangle className="h-4 w-4 text-white" />
+            </div>
+            <div>
+              <CardTitle className="text-sm font-bold text-foreground">Pond Leads — SMS Only</CardTitle>
+              <p className="text-[10px] text-slate-400">Email bounced · Phone still valid · {unsent.length} need texting</p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {unsent.slice(0, 10).map(lead => (
+            <div
+              key={lead.id}
+              className="bg-card/[0.03] border border-white/10 rounded-lg overflow-hidden transition-all duration-200"
+            >
+              <button
+                onClick={() => setExpandedLead(expandedLead === lead.id ? null : lead.id)}
+                className="w-full text-left px-4 py-3 flex items-center justify-between hover:bg-white/[0.03] transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="h-7 w-7 rounded-full bg-orange-500/15 flex items-center justify-center">
+                    <Mail className="h-3.5 w-3.5 text-orange-500" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold text-foreground">{lead.name}</div>
+                    <div className="text-[10px] text-slate-400">{lead.days_in_pond}d in pond · {lead.stage}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-[9px] border-orange-300 text-orange-600 bg-orange-50">
+                    Bad Email
+                  </Badge>
+                  <ChevronRight className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${expandedLead === lead.id ? "rotate-90" : ""}`} />
+                </div>
+              </button>
+
+              {expandedLead === lead.id && (
+                <div className="px-4 pb-3 space-y-2 border-t border-white/8 pt-2">
+                  {lead.notes && (
+                    <p className="text-[10px] text-slate-400 line-clamp-2">
+                      <span className="font-semibold text-slate-500">Notes:</span> {lead.notes}
+                    </p>
+                  )}
+                  <div className="bg-card/[0.05] border border-white/8 rounded-md p-2">
+                    <p className="text-[10px] text-slate-500 mb-1 font-semibold">Suggested text:</p>
+                    <p className="text-xs text-foreground">{lead.sms_body}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => handleSendPondSms(lead)}
+                      className="h-8 gap-1.5 text-xs bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white border-0"
+                    >
+                      <Send className="h-3 w-3" />
+                      Text {lead.name.split(" ")[0]}
+                    </Button>
+                    <a
+                      href={`tel:${lead.phone.replace(/\D/g, "")}`}
+                      className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-medium border border-white/15 text-slate-400 hover:bg-white/[0.05] transition-colors"
+                    >
+                      <Phone className="h-3 w-3" />
+                      Call
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+          {unsent.length > 10 && (
+            <p className="text-[10px] text-center text-slate-400 pt-1">
+              +{unsent.length - 10} more pond leads need texting
+            </p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

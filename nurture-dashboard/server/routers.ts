@@ -8,7 +8,7 @@ import { invokeLLM } from "./_core/llm";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
-import { getDashboardStats, getAgentLeads, getPendingQueue, getAgentRoster, clearRosterCache, clearQueueCache, clearDashboardCache, recordSmsSentToday } from "./dashboardData";
+import { getDashboardStats, getAgentLeads, getPendingQueue, getAgentRoster, clearRosterCache, clearQueueCache, clearDashboardCache, recordSmsSentToday, getPondSmsOnlyLeads } from "./dashboardData";
 import { getMemories, getWinningPatterns, logFeedback, saveMemory, logUiError, getSmsSentTodayByAgent, getSmsSentLastWeekByAgent, getRecentBotRuns, getRecentMonitorRuns, insertMonitorLog, getRecentObservations, markObservationFixed, getDb } from "./db";
 import { smsSentToday } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
@@ -216,6 +216,15 @@ export const appRouter = router({
         // When omitted (Peter/admin), returns the full queue.
         return getPendingQueue(ENV.fubApiKey, input.agentFilter);
       }),
+
+    /**
+     * Returns pond leads tagged "bad-email" that have a valid phone number.
+     * These are leads whose email bounced but still have a working phone —
+     * shown in Peter's Power Queue under "Pond Leads — SMS Only" section.
+     */
+    getPondSmsLeads: publicProcedure.query(async () => {
+      return getPondSmsOnlyLeads(ENV.fubApiKey);
+    }),
   }),
 
   leads: router({
